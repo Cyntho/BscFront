@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                                                    xmlns:app="http://schemas.android.com/apk/res-auto"
+                                                    xmlns:tools="http://schemas.android.com/tools"
+                                                    android:id="@+id/list_entry_prefab"
+                                                    android:layout_width="match_parent"
+                                                    android:layout_height="match_parent"
+                                                    tools:context=".ui.main.EntryViewModel"
+>
+    <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="30sp"
+            android:background="@color/background_error"
+            android:id="@+id/msg_container_prefab"
+            app:layout_constraintTop_toTopOf="parent" app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+        <TextView
+                android:text="@string/txt_time_null"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" android:id="@+id/msg_time_prefab"
+                android:gravity="center_horizontal"
+                app:layout_constraintStart_toStartOf="parent" app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                android:layout_marginStart="16dp"
+                app:layout_constraintVertical_bias="0.545"/>
+        <TextView
+                android:text="@string/txt_device_null"
+                android:layout_width="wrap_content"
+                android:gravity="center_horizontal"
+                android:layout_height="wrap_content"
+                android:id="@+id/msg_device_prefab"
+
+                app:layout_constraintEnd_toStartOf="@+id/msg_text_prefab"
+                app:layout_constraintStart_toEndOf="@+id/msg_time_prefab"
+                app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintTop_toTopOf="parent"/>
+
+        <TextView
+                android:text="@string/txt_error_null"
+                android:layout_width="220sp"
+                android:layout_height="wrap_content" android:id="@+id/msg_text_prefab"
+                android:gravity="center_horizontal"
+
+                app:layout_constraintBottom_toBottomOf="parent" app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                android:layout_marginEnd="16dp"
+                app:layout_constraintVertical_bias="0.5"/>
+
+        <TextView android:layout_width="match_parent"
+                  android:layout_height="match_parent"
+                  android:id="@+id/timer_time"
+                  android:tag="0"
+                  android:visibility="gone"
+        />
+
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

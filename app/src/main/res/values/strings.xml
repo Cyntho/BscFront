@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">Störmeldungen</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="title_activity_main2">MainActivity2</string>
+    <string name="tab_text_1">ELF 1</string>
+    <string name="tab_text_2">ELF 2</string>
+    <string name="tab_text_3">ELF 3</string>
+    <string name="tab_text_4">CDC</string>
+
+    <string name="msg_no_errors">Es liegen keine Störungen vor!</string>
+
+    <!-- Buttons -->
+    <string name="btn_connect">Connect</string>
+    <string name="title_activity_main3">MainActivity3</string>
+    <string name="txt_time_null">00:00:00</string>
+    <string name="txt_device_null">2215HT03</string>
+    <string name="txt_error_null">Laufzeitstörung Lastachse</string>
+</resources>
