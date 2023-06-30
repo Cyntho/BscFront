@@ -62,15 +62,9 @@ class MainActivity2 : AppCompatActivity() {
             } else {
                 println("Attempting to start listener")
                 runBlocking {
-                    mqtt.connect(::addText)
+                    mqtt.connect(applicationContext, ::addText)
                 }
                 println("Done")
-            }
-
-            try {
-                mqtt.readCert(applicationContext)
-            } catch (any: Exception){
-                any.printStackTrace()
             }
         }
     }

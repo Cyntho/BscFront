@@ -4,21 +4,37 @@ import android.content.Context
 import android.util.Log
 import androidx.core.content.ContentProviderCompat.requireContext
 import kotlinx.coroutines.*
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.eclipse.paho.mqttv5.client.*
 import org.eclipse.paho.mqttv5.client.persist.MemoryPersistence
 import org.eclipse.paho.mqttv5.common.MqttException
 import org.eclipse.paho.mqttv5.common.MqttMessage
 import org.eclipse.paho.mqttv5.common.packet.MqttProperties
+import java.io.BufferedInputStream
 import java.io.File
+import java.io.IOException
+import java.io.InputStream
+import java.security.Security
+import java.security.cert.Certificate
+import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
+import javax.net.SocketFactory
+import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLSocketFactory
 import kotlin.coroutines.coroutineContext
 
 class KotlinMqtt() {
 
-    private val host: String = "tcp://10.66.66.1"
-    private val port: Int = 1883
+    private val host: String = "ssl://10.66.66.1"
+    private val port: Int = 8883
 
     private val username: String = "emqx-phone-001"
     private val password: String = "32tz7u8mM"
+
+    private val sslCA: String = "certs/ca.pem"
+    private val sslPrivate: String = "certs/phone-001.key"
+    private val sslPublic: String = "certs/phone-001.pem"
+
 
     private val clientId: String = "phone-01"
 
@@ -28,11 +44,16 @@ class KotlinMqtt() {
     private var listener: Job? = null
 
     lateinit var adder: (m: String) -> Unit?
+    private  var context: Context? = null
 
     fun isOnline(): Boolean { return running }
 
-    fun connect(f: (m: String) -> Unit?){
+    fun connect(c: Context, f: (m: String) -> Unit?){
         try {
+
+            if (context == null){
+                context = c
+            }
 
             if (running) return
             running = true
@@ -76,6 +97,7 @@ class KotlinMqtt() {
                 }
             })
 
+
             runBlocking {
                 listener = launch {
                     listen(client)
@@ -106,12 +128,7 @@ class KotlinMqtt() {
         }
     }
 
-    public fun readCert(c: Context){
-        val path = File(c.filesDir, "certs/ca.pem")
-        val data = path.bufferedReader().readLine()
 
-        Log.d("KotlinMqtt", "Found ${data.length} lines")
-    }
 
     private fun listen(client: MqttAsyncClient){
 
@@ -119,8 +136,28 @@ class KotlinMqtt() {
 
         val options = MqttConnectionOptions()
         options.isCleanStart = true
+
+        // Setup credentials
         options.userName = username
         options.password = password.toByteArray()
+
+        // Assign encryption
+        // Here: Disable hostname verification since we're using a self-signed certificate
+        options.isHttpsHostnameVerificationEnabled = false
+
+
+        val path = File(context!!.filesDir, "certs/ca.pem")
+        try {
+            val factory = SslUtils.getSingleSocketFactory(path.inputStream())
+            options.socketFactory = factory
+
+            println("SSL Setup complete")
+
+        } catch (io: IOException){
+            io.printStackTrace()
+        }
+
+
 
         runBlocking {
 
@@ -131,4 +168,5 @@ class KotlinMqtt() {
             println("Subscribed to mqtt/test!")
         }
     }
+
 }
