@@ -1,27 +1,15 @@
 package org.cyntho.bscfront.net
 
 import android.content.Context
-import android.util.Log
-import androidx.core.content.ContentProviderCompat.requireContext
 import kotlinx.coroutines.*
-import org.bouncycastle.jce.provider.BouncyCastleProvider
+import org.cyntho.bscfront.R
 import org.eclipse.paho.mqttv5.client.*
 import org.eclipse.paho.mqttv5.client.persist.MemoryPersistence
 import org.eclipse.paho.mqttv5.common.MqttException
 import org.eclipse.paho.mqttv5.common.MqttMessage
 import org.eclipse.paho.mqttv5.common.packet.MqttProperties
-import java.io.BufferedInputStream
 import java.io.File
 import java.io.IOException
-import java.io.InputStream
-import java.security.Security
-import java.security.cert.Certificate
-import java.security.cert.CertificateFactory
-import java.security.cert.X509Certificate
-import javax.net.SocketFactory
-import javax.net.ssl.SSLContext
-import javax.net.ssl.SSLSocketFactory
-import kotlin.coroutines.coroutineContext
 
 class KotlinMqtt() {
 
@@ -145,10 +133,21 @@ class KotlinMqtt() {
         // Here: Disable hostname verification since we're using a self-signed certificate
         options.isHttpsHostnameVerificationEnabled = false
 
-
-        val path = File(context!!.filesDir, "certs/ca.pem")
         try {
-            val factory = SslUtils.getSingleSocketFactory(path.inputStream())
+            /*val factory = SslUtils.getSocketFactory(
+                File(context!!.filesDir, sslCA).inputStream(),
+                File(context!!.filesDir, sslPublic).inputStream(),
+                File(context!!.filesDir, sslPrivate).inputStream(),
+                ""
+            )*/
+            /*val caFile = context!!.resources.openRawResource(R.raw.ca)
+            val crtFile = context!!.resources.openRawResource(R.raw.phone_crt)
+            val keyFile = context!!.resources.openRawResource(R.raw.phone_pem)
+
+            val factory = SslUtils.getSocketFactory(caFile, crtFile, keyFile, "")*/
+
+            val factory = SslUtils.getSingleSocketFactory(File(context!!.filesDir, sslCA).inputStream())
+
             options.socketFactory = factory
 
             println("SSL Setup complete")
@@ -164,7 +163,7 @@ class KotlinMqtt() {
             val token = client.connect(options)
             token.waitForCompletion()
 
-            client.subscribe("mqtt/test", 2)
+            client.subscribe("mqtt/test", 1)
             println("Subscribed to mqtt/test!")
         }
     }
