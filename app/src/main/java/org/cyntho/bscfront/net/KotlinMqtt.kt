@@ -1,11 +1,16 @@
 package org.cyntho.bscfront.net
 
+import android.content.Context
+import android.util.Log
+import androidx.core.content.ContentProviderCompat.requireContext
 import kotlinx.coroutines.*
 import org.eclipse.paho.mqttv5.client.*
 import org.eclipse.paho.mqttv5.client.persist.MemoryPersistence
 import org.eclipse.paho.mqttv5.common.MqttException
 import org.eclipse.paho.mqttv5.common.MqttMessage
 import org.eclipse.paho.mqttv5.common.packet.MqttProperties
+import java.io.File
+import kotlin.coroutines.coroutineContext
 
 class KotlinMqtt() {
 
@@ -32,7 +37,6 @@ class KotlinMqtt() {
             if (running) return
             running = true
             adder = f
-
 
             println("Currently not listening. Starting now..")
 
@@ -100,6 +104,13 @@ class KotlinMqtt() {
                 println("Error: ${any.message}")
             }
         }
+    }
+
+    public fun readCert(c: Context){
+        val path = File(c.filesDir, "certs/ca.pem")
+        val data = path.bufferedReader().readLine()
+
+        Log.d("KotlinMqtt", "Found ${data.length} lines")
     }
 
     private fun listen(client: MqttAsyncClient){

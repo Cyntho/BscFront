@@ -23,7 +23,6 @@ class MainActivity2 : AppCompatActivity() {
     private lateinit var mqtt: KotlinMqtt
 
     private val data: MutableCollection<StatusMessage> = mutableListOf()
-    //private val fragments: MutableCollection<PlaceholderFragment> = mutableListOf()
     private val fragments: MutableMap<Int, PlaceholderFragment> = mutableMapOf()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,6 +65,12 @@ class MainActivity2 : AppCompatActivity() {
                     mqtt.connect(::addText)
                 }
                 println("Done")
+            }
+
+            try {
+                mqtt.readCert(applicationContext)
+            } catch (any: Exception){
+                any.printStackTrace()
             }
         }
     }
