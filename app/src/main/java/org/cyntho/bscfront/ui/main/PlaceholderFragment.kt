@@ -7,10 +7,13 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.ListView
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat.getColor
 import androidx.core.view.allViews
+import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import org.cyntho.bscfront.MainActivity2
@@ -18,7 +21,6 @@ import org.cyntho.bscfront.R
 import org.cyntho.bscfront.data.MessageType
 import org.cyntho.bscfront.data.StatusMessage
 import org.cyntho.bscfront.databinding.FragmentMainBinding
-import org.cyntho.bscfront.databinding.ListEntryBinding
 import java.sql.Timestamp
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -48,7 +50,7 @@ class PlaceholderFragment : Fragment() {
     private var main: MainActivity2? = null
     private var inf: LayoutInflater? = null
 
-    private val entries: List<EntryViewModel> = listOf()
+    private lateinit var messages: MutableList<StatusMessage>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,6 +65,7 @@ class PlaceholderFragment : Fragment() {
             main!!.addFragment(this, pageViewModel.getIndex())
         }
 
+        messages = mutableListOf()
     }
 
     override fun onCreateView(
@@ -78,6 +81,7 @@ class PlaceholderFragment : Fragment() {
 
         inf = inflater
         _binding = FragmentMainBinding.inflate(inflater, container, false)
+        //_binding = DataBindingUtil.setContentView(main!!, R.layout.fragment_main)
 
 
 
@@ -149,9 +153,11 @@ class PlaceholderFragment : Fragment() {
                 }
 
                 // Determine at which position the entry should be added
-
-
-                container.addView(v, determineIndexFor(v))
+                // Add the message to the list and sort it. Query the just added message by its id.
+                // The returned index corresponds to the new index on the Ui
+                messages.add(message)
+                messages.sortBy { it.time }
+                container.addView(v, messages.indexOf(message))
 
             } else {
                 Log.w(TAG, "Unable to resolve one or more elements in the UI")
@@ -159,13 +165,6 @@ class PlaceholderFragment : Fragment() {
         }
     }
 
-    private fun determineIndexFor(view: View): Int {
-        for (c in binding.layoutWrapper.findViewById<ConstraintLayout>(R.id.layoutWrapper).allViews) {
-            Log.i(TAG, "Date = ${c.findViewById<TextView>(R.id.timer_time)?.text}")
-        }
-
-        return 0
-    }
 
 
     /**

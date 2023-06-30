@@ -47,7 +47,6 @@ class MainActivity2 : AppCompatActivity() {
         val tabs: TabLayout = binding.tabs
         tabs.setupWithViewPager(viewPager)
 
-
         mqtt = KotlinMqtt()
 
         val btnConnect: Button = binding.btnConnect
