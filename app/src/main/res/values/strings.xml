@@ -10,7 +10,7 @@
     <string name="msg_no_errors">Es liegen keine Störungen vor!</string>
 
     <!-- Buttons -->
-    <string name="btn_connect">Connect</string>
+    <string name="btn_connect">Login</string>
     <string name="title_activity_main3">MainActivity3</string>
     <string name="txt_time_null">00:00:00</string>
     <string name="txt_device_null">2215HT03</string>

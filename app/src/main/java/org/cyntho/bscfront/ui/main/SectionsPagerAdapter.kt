@@ -7,12 +7,6 @@ import androidx.fragment.app.FragmentPagerAdapter
 import org.cyntho.bscfront.MainActivity2
 import org.cyntho.bscfront.R
 
-private val TAB_TITLES = arrayOf(
-    R.string.tab_text_1,
-    R.string.tab_text_2,
-    R.string.tab_text_3,
-    R.string.tab_text_4
-)
 
 
 /**
@@ -22,6 +16,8 @@ private val TAB_TITLES = arrayOf(
 class SectionsPagerAdapter(private val context: Context, fm: FragmentManager) : FragmentPagerAdapter(fm) {
 
     private var main: MainActivity2? = null
+    private var titles: Array<String> = arrayOf()
+    private var counter: Int = titles.size
 
     override fun getItem(position: Int): Fragment {
         // getItem is called to instantiate the fragment for the given page.
@@ -30,15 +26,25 @@ class SectionsPagerAdapter(private val context: Context, fm: FragmentManager) : 
     }
 
     override fun getPageTitle(position: Int): CharSequence? {
-        return context.resources.getString(TAB_TITLES[position])
+        if (position >= 0 && position < titles.size){
+            return titles[position]
+        }
+        return "Unknown"
     }
 
     override fun getCount(): Int {
-        // Show 4 total pages.
-        return 4
+        return counter
+    }
+
+    fun setCounter(value: Int){
+        counter = value
     }
 
     fun setActivity(a: MainActivity2){
         main = a
+    }
+
+    fun setTitles(arr: Array<String>){
+        titles = arr
     }
 }

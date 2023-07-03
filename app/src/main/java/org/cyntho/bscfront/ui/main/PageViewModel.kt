@@ -25,30 +25,5 @@ class PageViewModel : ViewModel() {
         }
     }
 
-    fun addMessage(msg: StatusMessage){
-        println("Tab [$_index] attempting to add msg with id [${msg.id}]")
-        messages.add(msg)
-        //messagesLive.value = messages
-        messagesLive.postValue(messages)
-
-        for (m in messages.iterator()){
-            println(m.toString())
-        }
-    }
-
-    fun removeMessage(id: Int){
-        println("Tab [$_index] attempting to remove msg with id [$id]")
-        for (m in messages){
-            if (m.id == id){
-                messages.remove(m)
-                println("Removed message")
-                messagesLive.value = messages
-                return
-            }
-        }
-        println("Could not find message")
-    }
-
-
 
 }

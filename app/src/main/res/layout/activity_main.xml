@@ -43,7 +43,7 @@
     <Button
             android:text="@string/btn_connect"
             android:layout_width="160dp"
-            android:layout_height="wrap_content" android:id="@+id/btnConnect" app:layout_anchorGravity="center"
+            android:layout_height="wrap_content" android:id="@+id/btnLogin" app:layout_anchorGravity="center"
             app:layout_anchor="@+id/view_pager"/>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

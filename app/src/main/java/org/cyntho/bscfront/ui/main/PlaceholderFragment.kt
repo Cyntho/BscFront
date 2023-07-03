@@ -1,19 +1,13 @@
 package org.cyntho.bscfront.ui.main
 
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
-import android.widget.ListView
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat.getColor
-import androidx.core.view.allViews
-import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import org.cyntho.bscfront.MainActivity2
@@ -21,14 +15,10 @@ import org.cyntho.bscfront.R
 import org.cyntho.bscfront.data.MessageType
 import org.cyntho.bscfront.data.StatusMessage
 import org.cyntho.bscfront.databinding.FragmentMainBinding
-import java.sql.Timestamp
-import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
-import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
-import java.util.*
 
 /**
  * A placeholder fragment containing a simple view.
@@ -58,10 +48,9 @@ class PlaceholderFragment : Fragment() {
             setIndex(arguments?.getInt(ARG_SECTION_NUMBER) ?: 1)
         }
 
-        println("PlaceholderFragment.OnCreate() ${pageViewModel.getIndex()}")
+        // println("PlaceholderFragment.OnCreate() ${pageViewModel.getIndex()}")
 
         if (main != null){
-            println("PlaceholderFragment.onCreate() with id ${pageViewModel.getIndex()}")
             main!!.addFragment(this, pageViewModel.getIndex())
         }
 
@@ -77,28 +66,14 @@ class PlaceholderFragment : Fragment() {
             setIndex(arguments?.getInt(ARG_SECTION_NUMBER) ?: 1)
         }
 
-        println("PlaceholderFragment.OnCreateView() ${pageViewModel.getIndex()}")
-
         inf = inflater
         _binding = FragmentMainBinding.inflate(inflater, container, false)
-        //_binding = DataBindingUtil.setContentView(main!!, R.layout.fragment_main)
-
-
-
-    /*    println("found ${(wrapper.findViewById<ConstraintLayout>(R.id.msg_container_prefab).allViews).toList().size} entries")
-        for (c in wrapper.findViewById<ConstraintLayout>(R.id.msg_container_prefab).allViews){
-            when (c is TextView){
-                true -> println("${c.text}")
-                false -> println("$c")
-            }
-        }*/
-
 
         return binding.root
     }
 
 
-    fun onMessageReceived(message: StatusMessage){
+    fun onAddMessage(message: StatusMessage){
         /*val view: TextView = TextView(context)
         view.text = message
         binding.layoutWrapper.addView(view)*/
@@ -146,7 +121,7 @@ class PlaceholderFragment : Fragment() {
                     MessageType.STATUS -> bg.setBackgroundColor(getColor(requireContext(), R.color.background_status))
                     else -> {
                         // message.status MAY BE NULL
-                        // This is due to the gson parsing..
+                        // This is due to the gson parsing...
                         bg.setBackgroundColor(getColor(requireContext(), R.color.background_error))
                         Log.w(TAG, "Unable to resolve error code: ${message.status}")
                     }
@@ -162,6 +137,18 @@ class PlaceholderFragment : Fragment() {
             } else {
                 Log.w(TAG, "Unable to resolve one or more elements in the UI")
             }
+        }
+    }
+
+    fun onRemoveMessage(message: StatusMessage){
+        val index = messages.indexOf(message)
+        if (index == -1) return
+
+        val container = binding.layoutWrapper
+        main?.runOnUiThread {
+            container.removeViewAt(index)
+
+            Log.d(TAG, "Removed entry at index $index")
         }
     }
 
@@ -204,12 +191,12 @@ class PlaceholderFragment : Fragment() {
 
     override fun onDestroyView() {
 
-        println("PlaceholderFragment.OnDestroyView() ${pageViewModel.getIndex()}")
+        //println("PlaceholderFragment.OnDestroyView() ${pageViewModel.getIndex()}")
 
-        /*if (main != null){
-            println("PlaceholderFragment.onDelete() with id ${pageViewModel.getIndex()}")
+        if (main != null){
+            //println("PlaceholderFragment.onDelete() with id ${pageViewModel.getIndex()}")
             main!!.removeFragment(pageViewModel.getIndex())
-        }*/
+        }
 
         super.onDestroyView()
         _binding = null
