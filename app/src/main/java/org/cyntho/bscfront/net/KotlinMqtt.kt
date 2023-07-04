@@ -72,16 +72,6 @@ class KotlinMqtt(tabs: TabLayout) {
         }
     }
 
-    private suspend fun initialize(client: MqttAsyncClient){
-
-        client.subscribe("res/settings", 1)
-        client.subscribe("res/messages", 1)
-
-        client.publish("req/settings", MqttMessage(clientId.toByteArray(),1, false, MqttProperties()))
-        client.publish("req/messages", MqttMessage(clientId.toByteArray(), 1, false, MqttProperties()))
-
-        yield()
-    }
 
     suspend fun disconnect(){
         if (running){
@@ -137,8 +127,11 @@ class KotlinMqtt(tabs: TabLayout) {
             Log.d(TAG, "Awaiting connection")
             token.waitForCompletion()
 
-            val setup = async { initialize(client) }
-            setup.await()
+            client.subscribe("res/settings", 1)
+            client.subscribe("res/messages", 1)
+
+            client.publish("req/settings", MqttMessage(clientId.toByteArray(),1, false, MqttProperties()))
+            client.publish("req/messages", MqttMessage(clientId.toByteArray(), 1, false, MqttProperties()))
 
             Log.d(TAG, "Everything is setup. Waiting for messages..")
 

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+      xmlns:app="http://schemas.android.com/apk/res-auto"
+      xmlns:tools="http://schemas.android.com/tools" tools:context=".MainActivity2">
+
+    <item android:id="@+id/menu_bell"
+          android:icon="@drawable/ic_action_bell_thick_on"
+          app:showAsAction="ifRoom"
+          android:title="@string/btn_notification_off"/>
+
+    <item
+            android:id="@+id/menu_settings"
+            android:icon="@android:drawable/ic_menu_manage"
+            android:iconTint="@color/white"
+            app:showAsAction="never"
+            android:title="@string/btn_settings"
+    />
+    <item
+            android:id="@+id/menu_about"
+            android:icon="@android:drawable/ic_menu_info_details"
+            app:showAsAction="never"
+            android:title="@string/btn_about"
+    />
+
+
+
+
+</menu>

@@ -8,6 +8,8 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat.getColor
+import androidx.core.view.allViews
+import androidx.core.view.get
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import org.cyntho.bscfront.MainActivity2
@@ -77,7 +79,7 @@ class PlaceholderFragment : Fragment() {
         /*val view: TextView = TextView(context)
         view.text = message
         binding.layoutWrapper.addView(view)*/
-        println("Called onMessageReceived() on fragment ${pageViewModel.getIndex()} with message [$message]")
+        // println("Called onMessageReceived() on fragment ${pageViewModel.getIndex()} with message [$message]")
         //pageViewModel.addMessage(message)
 
         main?.runOnUiThread {
@@ -107,7 +109,7 @@ class PlaceholderFragment : Fragment() {
                             atZone(ZoneId.of("Europe/Berlin")))
                     txtTime.text = ttime.toString()
 
-                    println(DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneOffset.UTC).format(Instant.now()))
+                    //println(DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneOffset.UTC).format(Instant.now()))
 
                 } catch (nf: NumberFormatException){
                     Log.w(TAG, "Unable to parse time given: ${message.time}")
@@ -117,8 +119,7 @@ class PlaceholderFragment : Fragment() {
                 // Assign background color depending on the type of message received
                 when (message.status){
                     MessageType.ERROR -> bg.setBackgroundColor(getColor(requireContext(), R.color.background_error))
-                    MessageType.INFO -> bg.setBackgroundColor(getColor(requireContext(), R.color.background_info))
-                    MessageType.STATUS -> bg.setBackgroundColor(getColor(requireContext(), R.color.background_status))
+                    MessageType.WARNING -> bg.setBackgroundColor(getColor(requireContext(), R.color.background_info))
                     else -> {
                         // message.status MAY BE NULL
                         // This is due to the gson parsing...
@@ -130,9 +131,19 @@ class PlaceholderFragment : Fragment() {
                 // Determine at which position the entry should be added
                 // Add the message to the list and sort it. Query the just added message by its id.
                 // The returned index corresponds to the new index on the Ui
+
                 messages.add(message)
                 messages.sortBy { it.time }
+
+                val index = messages.indexOf(message)
+
+                // allViews.count() counts itself as 1
+                if (index > (container.allViews.count() - 1) || index < 0){
+                    Log.wtf(TAG, "Something went definitely wrong! Array out of bound while adding message to container. Index: $index, Count: ${container.allViews.count()}")
+                }
+
                 container.addView(v, messages.indexOf(message))
+
 
             } else {
                 Log.w(TAG, "Unable to resolve one or more elements in the UI")
@@ -141,14 +152,22 @@ class PlaceholderFragment : Fragment() {
     }
 
     fun onRemoveMessage(message: StatusMessage){
+
         val index = messages.indexOf(message)
-        if (index == -1) return
+        if (index == -1) {
+            Log.e(TAG, "Attempting to remove non-existing message: ${message.id}")
+            return
+        }
 
         val container = binding.layoutWrapper
         main?.runOnUiThread {
-            container.removeViewAt(index)
-
-            Log.d(TAG, "Removed entry at index $index")
+            try {
+                messages.removeAt(index)
+                container.removeViewAt(index)
+                Log.d(TAG, "Successfully removed message with id ${message.id} from view at index $index")
+            } catch (any: Exception){
+                Log.e(TAG, "Unable to remove element at index $index on fragment ${pageViewModel.getIndex()}")
+            }
         }
     }
 

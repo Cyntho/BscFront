@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Störmeldungen</string>
     <string name="title_activity_main">MainActivity</string>
-    <string name="title_activity_main2">MainActivity2</string>
+    <string name="title_activity_main2">Störmeldungen</string>
     <string name="tab_text_1">ELF 1</string>
     <string name="tab_text_2">ELF 2</string>
     <string name="tab_text_3">ELF 3</string>
@@ -11,8 +11,36 @@
 
     <!-- Buttons -->
     <string name="btn_connect">Login</string>
+    <string name="btn_about">Info</string>
+    <string name="btn_settings">Einstellungen</string>
+
+    <string name="btn_notifications_on">Benachrichtigungen aktivieren</string>
+    <string name="btn_notification_off">Benachrichtigungen deaktivieren</string>
+
+
     <string name="title_activity_main3">MainActivity3</string>
     <string name="txt_time_null">00:00:00</string>
     <string name="txt_device_null">2215HT03</string>
     <string name="txt_error_null">Laufzeitstörung Lastachse</string>
+
+
+    <!-- Login Form -->
+    <string name="txt_username">Username</string>
+    <string name="txt_password">Password</string>
+    <string name="txt_pw_placeholder">**********</string>
+    <!-- Preference Titles -->
+    <string name="messages_header">Messages</string>
+    <string name="sync_header">Sync</string>
+
+    <!-- Messages Preferences -->
+    <string name="signature_title">Your signature</string>
+    <string name="reply_title">Default reply action</string>
+
+    <!-- Sync Preferences -->
+    <string name="sync_title">Sync email periodically</string>
+    <string name="attachment_title">Download incoming attachments</string>
+    <string name="attachment_summary_on">Automatically download attachments for incoming emails</string>
+    <string name="attachment_summary_off">Only download attachments when manually requested</string>
+
+    <string name="settings_notifications_title">Benachrichtigungen</string>
 </resources>
