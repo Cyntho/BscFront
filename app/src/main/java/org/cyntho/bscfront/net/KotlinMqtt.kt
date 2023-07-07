@@ -13,15 +13,15 @@ import org.eclipse.paho.mqttv5.common.packet.MqttProperties
 import java.io.File
 import java.io.IOException
 import java.util.*
+import java.util.concurrent.TimeoutException
 
-class KotlinMqtt(tabs: TabLayout) {
+class KotlinMqtt(user: String, pass: String) {
 
     private val TAG: String = "KotlinMqtt"
 
     private val host: String = "ssl://10.66.66.1"
-
-    private var username: String = "emqx-phone-001"
-    private var password: String = "32tz7u8mM"
+    private val username: String = user
+    private val password: String = pass
 
     private val sslCA: String = "certs/ca.pem"
     private val clientId: String = "phone-01"
@@ -39,8 +39,6 @@ class KotlinMqtt(tabs: TabLayout) {
     fun isOnline(): Boolean { return running && online}
 
     fun connect(context: Context,
-                username: String,
-                password: String,
                 funAdd: (m: String) -> Unit?,
                 funRemove: (m: String) -> Unit?,
                 funSettings: (m: String) -> Boolean,
@@ -55,30 +53,25 @@ class KotlinMqtt(tabs: TabLayout) {
             if (running) return
             running = true
 
-            this.username = username
-            this.password = password
 
             // Assign callbacks
             client = MqttAsyncClient(host, clientId, MemoryPersistence())
             mqttCallback = MqttCallbackRuntime(funAdd, funRemove, funSettings, funMessages, client!!)
-
             client!!.setCallback(mqttCallback)
 
             runBlocking {
                 listener = launch {
                     listen(client!!)
                 }
-
                 listener!!.start()
             }
 
         } catch (mqttException: MqttException) {
             mqttException.printStackTrace()
-        } catch (any: Exception){
-            any.printStackTrace()
+        }catch (auth: AuthException){
+            throw auth
         }
     }
-
 
     suspend fun disconnect(){
         if (running){
@@ -132,36 +125,42 @@ class KotlinMqtt(tabs: TabLayout) {
             running = false
         }
 
-        runBlocking {
-            val token = client.connect(options)
-            Log.d(TAG, "Awaiting connection")
-            try {
-                token.waitForCompletion()
-            } catch (any: Exception){
-                running = false
+        val token = client.connect(options)
+        Log.d(TAG, "Awaiting connection")
+        try {
+            token.waitForCompletion(1000)
+
+        } catch (any: Exception){
+            Log.w(TAG,"Failed to connect to the server! $any")
+
+            running = false
+            online = false
+
+            if (any.message == null){
+                throw Exception("Unknown error occurred")
+            } else if (any.message!!.contains("Not authorized")){
                 throw AuthException("Unable to authenticate user [$username]")
+            } else {
+                throw TimeoutException("Unable to connect to the server. It may be offline?")
             }
-
-            println("Granted QoS: ${token.grantedQos.toList().toString()}")
-
-            client.subscribe("res/settings", 1)
-            client.subscribe("res/messages", 1)
-
-            client.publish("req/settings", MqttMessage(clientId.toByteArray(),1, false, MqttProperties()))
-            client.publish("req/messages", MqttMessage(clientId.toByteArray(), 1, false, MqttProperties()))
-
-            Log.d(TAG, "Everything is setup. Waiting for messages..")
-
-            client.subscribe("messages/add", 1)
-            client.subscribe("messages/remove", 1)
-        }.also {
-            online = true
-            running = true
         }
-    }
 
-    private fun test(m: String) : Boolean {
-        return true
+        client.subscribe("res/settings", 1)
+        client.subscribe("res/messages", 1)
+
+        client.publish("req/settings", MqttMessage(clientId.toByteArray(),1, false, MqttProperties()))
+        client.publish("req/messages", MqttMessage(clientId.toByteArray(), 1, false, MqttProperties()))
+
+        Log.d(TAG, "Everything is setup. Waiting for messages..")
+
+        client.subscribe("messages/add", 1)
+        client.subscribe("messages/remove", 1)
+
+
+        println("Granted QoS: ${token.grantedQos.toList().toString()}")
+
+        online = true
+        running = true
     }
 
 }

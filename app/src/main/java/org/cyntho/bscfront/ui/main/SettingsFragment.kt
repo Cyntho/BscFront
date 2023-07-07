@@ -1,26 +1,31 @@
 package org.cyntho.bscfront.ui.main
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
+import androidx.lifecycle.ViewModelProvider
 import androidx.preference.MultiSelectListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
 import androidx.preference.SwitchPreference
+import org.cyntho.bscfront.MainActivity
 import org.cyntho.bscfront.R
+import org.cyntho.bscfront.SettingsActivity
 
 class SettingsFragment : PreferenceFragmentCompat() {
+
+    private var _username: String = ""
+    private var _password: String = ""
+
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.root_preferences, rootKey)
 
-     /*   val liste = findPreference<MultiSelectListPreference>("multi_select_list_preference_1")
-        if (liste == null){
-            println("Unable to resolve list")
-            return
-        }
-        setListPreferenceData(liste)*/
+        _username = arguments?.getString(USERNAME) ?: "empty"
+        _password = arguments?.getString(PASSWORD) ?: "empty"
 
-        println("Root key: $rootKey")
+        println("CREATED SettingsFragment with: username = $_username, password = $_password")
 
         val notificationsRoot = findPreference<SwitchPreference>("switch_preference_notifications_global")
         if (notificationsRoot != null){
@@ -53,5 +58,24 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        println("CREATED SETTINGS FRAGMENT")
     }
+
+
+    companion object {
+        private const val USERNAME = "USERNAME"
+        private const val PASSWORD = "PASSWORD"
+
+        @JvmStatic
+        fun newInstance(context: Context, username: String, password: String): SettingsFragment {
+            val value = SettingsFragment().apply {
+                arguments = Bundle().apply {
+                    putString(USERNAME, username)
+                    putString(PASSWORD, password)
+                }
+            }
+            return value
+        }
+    }
+
 }

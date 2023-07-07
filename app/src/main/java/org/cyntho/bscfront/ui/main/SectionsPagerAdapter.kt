@@ -4,9 +4,7 @@ import android.content.Context
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentPagerAdapter
-import org.cyntho.bscfront.MainActivity2
-import org.cyntho.bscfront.R
-
+import org.cyntho.bscfront.MainActivity
 
 
 /**
@@ -15,7 +13,7 @@ import org.cyntho.bscfront.R
  */
 class SectionsPagerAdapter(private val context: Context, fm: FragmentManager) : FragmentPagerAdapter(fm) {
 
-    private var main: MainActivity2? = null
+    private var main: MainActivity? = null
     private var titles: Array<String> = arrayOf()
     private var counter: Int = titles.size
 
@@ -40,7 +38,7 @@ class SectionsPagerAdapter(private val context: Context, fm: FragmentManager) : 
         counter = value
     }
 
-    fun setActivity(a: MainActivity2){
+    fun setActivity(a: MainActivity){
         main = a
     }
 

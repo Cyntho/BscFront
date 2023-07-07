@@ -9,17 +9,15 @@ import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat.getColor
 import androidx.core.view.allViews
-import androidx.core.view.get
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
-import org.cyntho.bscfront.MainActivity2
+import org.cyntho.bscfront.MainActivity
 import org.cyntho.bscfront.R
 import org.cyntho.bscfront.data.MessageType
 import org.cyntho.bscfront.data.StatusMessage
 import org.cyntho.bscfront.databinding.FragmentMainBinding
 import java.time.Instant
 import java.time.ZoneId
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 /**
@@ -39,7 +37,7 @@ class PlaceholderFragment : Fragment() {
     private lateinit var onAddMessage: (msg: StatusMessage) -> Unit?
     private lateinit var onRemoveMessage: (id: Int) -> Unit?
 
-    private var main: MainActivity2? = null
+    private var main: MainActivity? = null
     private var inf: LayoutInflater? = null
 
     private lateinit var messages: MutableList<StatusMessage>
@@ -194,7 +192,7 @@ class PlaceholderFragment : Fragment() {
          * number.
          */
         @JvmStatic
-        fun newInstance(sectionNumber: Int, m: MainActivity2?): PlaceholderFragment {
+        fun newInstance(sectionNumber: Int, m: MainActivity?): PlaceholderFragment {
             val value = PlaceholderFragment().apply {
                 arguments = Bundle().apply {
                     putInt(ARG_SECTION_NUMBER, sectionNumber)
