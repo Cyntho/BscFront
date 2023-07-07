@@ -5,12 +5,18 @@
     <PreferenceCategory
             android:title="@string/settings_notifications_title"
     >
+        <SwitchPreference
+                android:key="switch_preference_notifications_global"
+                android:defaultValue="false"
+                android:title="@string/settings_notifications_global"
+        />
 
-
-        <MultiSelectListPreference
-                android:title="Multi select list preference" android:defaultValue="@array/reply_entries"
-                android:entries="@array/reply_entries" android:entryValues="@android:array/emailAddressTypes"
-                android:key="multi_select_list_preference_1"/>
+        <SwitchPreference
+                android:key="switch_preference_notifications_vibrate"
+                android:defaultValue="true"
+                android:title="@string/settings_notifications_vibrate"
+                android:dependency="switch_preference_notifications_global"
+        />
     </PreferenceCategory>
     <PreferenceCategory
             app:title="@string/messages_header">

@@ -1,8 +1,15 @@
 package org.cyntho.bscfront
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.PackageManager
+import android.graphics.Color
+import android.media.RingtoneManager
 import android.os.Bundle
 import android.util.Log
 import android.view.Menu
@@ -12,21 +19,33 @@ import com.google.android.material.tabs.TabLayout
 import androidx.viewpager.widget.ViewPager
 import androidx.appcompat.app.AppCompatActivity
 import android.widget.Button
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.preference.PreferenceManager
+import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.cyntho.bscfront.data.LocationWrapper
 import org.cyntho.bscfront.data.StatusMessage
 import org.cyntho.bscfront.ui.main.SectionsPagerAdapter
 import org.cyntho.bscfront.databinding.ActivityMain2Binding
+import org.cyntho.bscfront.exceptions.AuthException
 import org.cyntho.bscfront.net.KotlinMqtt
 import org.cyntho.bscfront.ui.main.PlaceholderFragment
 import org.cyntho.bscfront.ui.main.SettingsFragment
+import java.sql.Time
+import java.time.Instant
+import kotlin.math.abs
 
 class MainActivity2 : AppCompatActivity() {
 
     private val TAG: String = "BscFront/MainActivity2"
+    private val CHANNEL_ID: Int = 0
 
     private lateinit var binding: ActivityMain2Binding
     private lateinit var mqtt: KotlinMqtt
@@ -35,11 +54,13 @@ class MainActivity2 : AppCompatActivity() {
     private val data: MutableCollection<StatusMessage> = mutableListOf()
     private val fragments: MutableMap<Int, PlaceholderFragment> = mutableMapOf()
 
+    private var lastNotification: Long = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // Assign default settings
-        PreferenceManager.setDefaultValues(this, R.xml.root_preferences, false)
+        PreferenceManager.setDefaultValues(this, R.xml.root_preferences, true)
 
         binding = ActivityMain2Binding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -50,10 +71,18 @@ class MainActivity2 : AppCompatActivity() {
         val viewPager: ViewPager = binding.viewPager2
         viewPager.adapter = sectionsPagerAdapter
 
-        // Increasing the offscreenPageLimit prevents the adapter from creating/deleting pages at runtime
-        // This forces it to load them at startup and keep them in ram (default: 1)
-
-        viewPager.offscreenPageLimit = 10
+        // Create notification channel
+        with (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager){
+            createNotificationChannel(
+                NotificationChannel(
+                    "BSC_FRONT_NOTIFICATIONS",
+                    "My notification channel",
+                    NotificationManager.IMPORTANCE_DEFAULT
+                ).apply {
+                    description = "App notification"
+                }
+            )
+        }
 
         val tabs: TabLayout = binding.tabs
         tabs.setupWithViewPager(viewPager)
@@ -61,9 +90,9 @@ class MainActivity2 : AppCompatActivity() {
         mqtt = KotlinMqtt(tabs)
 
         val frmLogin = binding.frmLogin
-
-
         val btnConnect: Button = binding.btnConnect
+        val parentLayout = findViewById<View>(android.R.id.content)
+
         btnConnect.setOnClickListener {
             //Snackbar.make(view, "Something happened!", Snackbar.LENGTH_LONG).setAction("Action", null).show()
             //connect(view)
@@ -75,14 +104,32 @@ class MainActivity2 : AppCompatActivity() {
                 }
             } else {
                 println("Attempting to start listener")
-                runBlocking {
-                    mqtt.connect(applicationContext,
-                        ::addMessage,
-                        ::removeMessage,
-                        ::onSettingsReceived,
-                        ::onMessagesReceived)
-                }.also {
-                    frmLogin.visibility = View.GONE
+                if (binding.txtUsername.text.toString() == "" || binding.txtPassword.text.toString() == ""){
+                    Snackbar.make(parentLayout, "Username or Password are empty!", Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
+                } else {
+                    runBlocking {
+                        try {
+                            mqtt.connect(applicationContext,
+                                binding.txtUsername.text.toString(),
+                                binding.txtPassword.text.toString(),
+                                ::addMessage,
+                                ::removeMessage,
+                                ::onSettingsReceived,
+                                ::onMessagesReceived)
+                        } catch (auth: AuthException){
+                            println(auth.message)
+                            Snackbar.make(parentLayout, "Invalid Username or Password", Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
+                            return@runBlocking
+                        } catch (any: Exception){
+                            any.printStackTrace()
+                        }
+                    }.also {
+                        if (mqtt.isOnline()){
+                            frmLogin.visibility = View.GONE
+                            // Enable logout button
+                            menu?.getItem(3)?.setEnabled(true)
+                        }
+                    }
                 }
             }
         }
@@ -94,7 +141,7 @@ class MainActivity2 : AppCompatActivity() {
         this.menu = menu
 
         // Load settings for notifications
-        if (getPreferences(Context.MODE_PRIVATE).getBoolean("globalNotifications", true)){
+        if (PreferenceManager.getDefaultSharedPreferences(this).getBoolean("switch_preference_notifications_global", true)){
             menu?.getItem(0)?.setIcon(ContextCompat.getDrawable(applicationContext, R.drawable.ic_action_bell_thick_on))
         } else {
             menu?.getItem(0)?.setIcon(ContextCompat.getDrawable(applicationContext, R.drawable.ic_action_bell_thick_off))
@@ -106,13 +153,26 @@ class MainActivity2 : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId){
             R.id.menu_bell -> {
-                toggleNotifications()
+                // Toggle the notifications from here
+                toggleNotifications(true)
             }
             R.id.menu_settings -> {
-                println("Settings clicked")
+                // Open settings
                 val intent = Intent(this, SettingsActivity::class.java)
                 startActivity(intent)
             }
+            R.id.menu_logout -> {
+                if (mqtt.isOnline()){
+                    runBlocking {
+                        mqtt.disconnect()
+                    }.also {
+                        Snackbar.make(findViewById<View>(android.R.id.content), "You are now offline", Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
+                    }.also {
+                        menu?.getItem(3)?.setEnabled(true)
+                    }
+                }
+            }
+
             else -> {
                 return super.onOptionsItemSelected(item)
             }
@@ -120,35 +180,43 @@ class MainActivity2 : AppCompatActivity() {
         return true
     }
 
-    private fun toggleNotifications(){
+    override fun onResume() {
+        super.onResume()
+        toggleNotifications(false)
+    }
 
-        val settings = getPreferences(Context.MODE_PRIVATE)
+    private fun toggleNotifications(save: Boolean){
+
+        val settings = PreferenceManager.getDefaultSharedPreferences(this)
         val editor = settings.edit()
 
-        when (settings.getBoolean("globalNotifications", true)){
+        when (settings.getBoolean("switch_preference_notifications_global", true)){
             true -> {
                 // Used to be turned on, deactivate it now
-                editor.putBoolean("globalNotifications", false)
+                editor.putBoolean("switch_preference_notifications_global", false)
                 menu?.getItem(0)?.setIcon(ContextCompat.getDrawable(applicationContext, R.drawable.ic_action_bell_thick_off))
-
-                Log.d(TAG, "Notifications are now turned OFF")
             }
             false -> {
                 // Used to be turned off, activate it now
-                editor.putBoolean("globalNotifications", true)
+                editor.putBoolean("switch_preference_notifications_global", true)
                 menu?.getItem(0)?.setIcon(ContextCompat.getDrawable(applicationContext, R.drawable.ic_action_bell_thick_on))
-                Log.d(TAG, "Notifications are now turned ON")
             }
         }
         // Save persistently
-        editor.apply()
+        if (save){
+            editor.apply()
+        }
     }
 
     private fun addMessage(message: String) : Unit{
         try {
-
             val wrapper = Gson().fromJson(message.trimIndent(), StatusMessage::class.java)
             data.add(wrapper)
+            try {
+                notifyUser(wrapper)
+            } catch (ex: Exception){
+                ex.printStackTrace()
+            }
 
             val f = fragments[wrapper.location]
 
@@ -246,6 +314,48 @@ class MainActivity2 : AppCompatActivity() {
 
     fun removeFragment(id: Int){
         fragments.remove(id)
+    }
+
+    @SuppressLint("ServiceCast")
+    private fun notifyUser(message: StatusMessage){
+
+        // Only notify user if app is in background
+        if (ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)){
+            return
+        }
+
+        // Send push notifications at least 10 seconds apart to avoid spam
+        val currentTime = Time.from(Instant.now()).time
+        val diff = abs(currentTime - lastNotification)
+        if (diff > 10 * 1000){
+            lastNotification = currentTime
+        } else {
+            Log.d(TAG,"Skipping notification because last one was only ${diff / 1000} seconds ago")
+            return
+        }
+
+        val builder = NotificationCompat.Builder(this, "BSC_FRONT_NOTIFICATIONS")
+            .setVibrate(longArrayOf(1000, 1000, 1000))
+            .setLights(Color.RED, 3000, 3000)
+            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setSmallIcon(R.drawable.ic_action_bell_thick_on)
+            .setContentTitle(message.status.toString())
+            .setContentText(message.message)
+            .setOnlyAlertOnce(true)
+
+        // Check for permissions
+        with (NotificationManagerCompat.from(this)){
+            if (ActivityCompat.checkSelfPermission(
+                    applicationContext,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                ActivityCompat.requestPermissions(this@MainActivity2, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 0)
+                return
+            }
+            notify(System.currentTimeMillis().toInt(), builder.build())
+        }
     }
 
 

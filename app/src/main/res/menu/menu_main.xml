@@ -13,15 +13,21 @@
             android:icon="@android:drawable/ic_menu_manage"
             android:iconTint="@color/white"
             app:showAsAction="never"
-            android:title="@string/btn_settings"
+            android:title="@string/btn_menu_settings"
     />
     <item
             android:id="@+id/menu_about"
             android:icon="@android:drawable/ic_menu_info_details"
             app:showAsAction="never"
-            android:title="@string/btn_about"
+            android:title="@string/btn_menu_about"
     />
-
+    <item
+            android:id="@+id/menu_logout"
+            android:icon="@android:drawable/ic_menu_info_details"
+            app:showAsAction="never"
+            android:title="@string/btn_menu_logout"
+            android:enabled="false"
+    />
 
 
 

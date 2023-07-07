@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.google.android.material.tabs.TabLayout
 import kotlinx.coroutines.*
+import org.cyntho.bscfront.exceptions.AuthException
 import org.eclipse.paho.mqttv5.client.*
 import org.eclipse.paho.mqttv5.client.persist.MemoryPersistence
 import org.eclipse.paho.mqttv5.common.MqttException
@@ -19,8 +20,8 @@ class KotlinMqtt(tabs: TabLayout) {
 
     private val host: String = "ssl://10.66.66.1"
 
-    private val username: String = "emqx-phone-001"
-    private val password: String = "32tz7u8mM"
+    private var username: String = "emqx-phone-001"
+    private var password: String = "32tz7u8mM"
 
     private val sslCA: String = "certs/ca.pem"
     private val clientId: String = "phone-01"
@@ -28,15 +29,18 @@ class KotlinMqtt(tabs: TabLayout) {
     private var client: MqttAsyncClient? = null
 
     private var running: Boolean = false
+    private var online: Boolean = false
     private var listener: Job? = null
 
     private lateinit var mqttCallback: MqttCallbackRuntime
 
     private var context: Context? = null
 
-    fun isOnline(): Boolean { return running }
+    fun isOnline(): Boolean { return running && online}
 
     fun connect(context: Context,
+                username: String,
+                password: String,
                 funAdd: (m: String) -> Unit?,
                 funRemove: (m: String) -> Unit?,
                 funSettings: (m: String) -> Boolean,
@@ -50,6 +54,9 @@ class KotlinMqtt(tabs: TabLayout) {
             // Don't connect twice
             if (running) return
             running = true
+
+            this.username = username
+            this.password = password
 
             // Assign callbacks
             client = MqttAsyncClient(host, clientId, MemoryPersistence())
@@ -87,6 +94,8 @@ class KotlinMqtt(tabs: TabLayout) {
                 Log.i(TAG, "Disconnected form the Server.")
             } catch (any: Exception){
                 println("Error: ${any.message}")
+            } finally {
+                online = false
             }
         }
     }
@@ -120,12 +129,20 @@ class KotlinMqtt(tabs: TabLayout) {
 
         } catch (io: IOException){
             io.printStackTrace()
+            running = false
         }
 
         runBlocking {
             val token = client.connect(options)
             Log.d(TAG, "Awaiting connection")
-            token.waitForCompletion()
+            try {
+                token.waitForCompletion()
+            } catch (any: Exception){
+                running = false
+                throw AuthException("Unable to authenticate user [$username]")
+            }
+
+            println("Granted QoS: ${token.grantedQos.toList().toString()}")
 
             client.subscribe("res/settings", 1)
             client.subscribe("res/messages", 1)
@@ -137,9 +154,9 @@ class KotlinMqtt(tabs: TabLayout) {
 
             client.subscribe("messages/add", 1)
             client.subscribe("messages/remove", 1)
-
-
-
+        }.also {
+            online = true
+            running = true
         }
     }
 
