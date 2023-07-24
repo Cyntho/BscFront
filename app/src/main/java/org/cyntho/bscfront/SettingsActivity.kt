@@ -16,36 +16,22 @@ import org.cyntho.bscfront.ui.main.SettingsFragment
 
 class SettingsActivity : AppCompatActivity() {
 
-    private lateinit var _username: String
-    private lateinit var _password: String
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        _username = intent.extras?.getString("USERNAME") ?: "empty"
-        _password = intent.extras?.getString("PASSWORD") ?: "empty"
-
-        println("CREATED SettingsActivity with: username = $_username, password = $_password")
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-
         val arr: Array<String>? = intent.extras?.getStringArray("LOCATIONS")
-        val f = SettingsFragment.newInstance(_username, _password, arr)
+        val username: String = intent.extras?.getString("USERNAME", "empty") ?: "empty"
+        val f = SettingsFragment.newInstance(username, arr)
         supportFragmentManager.beginTransaction().replace(android.R.id.content, f).commit()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId){
             android.R.id.home ->{
-                println("Moving up")
+                // Finish activity to prevent MainActivity from loading again and requiring additional login
                 finish()
                 true
             }
-
             else -> super.onOptionsItemSelected(item)
         }
     }
-
-
-
-
 }

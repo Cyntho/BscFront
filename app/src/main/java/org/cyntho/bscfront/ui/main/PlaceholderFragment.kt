@@ -142,7 +142,7 @@ class PlaceholderFragment : Fragment() {
 
                 container.addView(v, messages.indexOf(message))
 
-                Log.d(TAG, "Added message with id ${message.id} to view at index $index")
+                // Log.d(TAG, "Added message with id ${message.id} to view at index $index")
 
             } else {
                 Log.w(TAG, "Unable to resolve one or more elements in the UI")
@@ -163,7 +163,7 @@ class PlaceholderFragment : Fragment() {
             try {
                 messages.removeAt(index)
                 container.removeViewAt(index)
-                Log.d(TAG, "Removed message with id ${message.id} from view at index $index")
+                // Log.d(TAG, "Removed message with id ${message.id} from view at index $index")
             } catch (any: Exception){
                 Log.e(TAG, "Unable to remove element at index $index on fragment ${pageViewModel.getIndex()}")
             }

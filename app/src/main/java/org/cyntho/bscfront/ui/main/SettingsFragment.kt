@@ -15,22 +15,6 @@ import org.cyntho.bscfront.SettingsActivity
 
 class SettingsFragment : PreferenceFragmentCompat() {
 
-    private var initialized = false
-
-    private lateinit var _username: String
-    private lateinit var _password: String
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        _username = arguments?.getString("USERNAME", "empty") ?: "empty"
-        _password = arguments?.getString("PASSWORD", "empty") ?: "empty"
-
-        println("CREATED SettingsFragment with: username = $_username, password = $_password")
-
-    }
-
-
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.root_preferences, rootKey)
 
@@ -59,15 +43,13 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
     companion object {
         private const val USERNAME = "USERNAME"
-        private const val PASSWORD = "PASSWORD"
         private const val LOCATION = "LOCATIONS"
 
         @JvmStatic
-        fun newInstance(username: String, password: String, arr: Array<String>?): SettingsFragment {
+        fun newInstance(username: String, arr: Array<String>?): SettingsFragment {
             val value = SettingsFragment().apply {
                 arguments = Bundle().apply {
                     putString(USERNAME, username)
-                    putString(PASSWORD, password)
                     putStringArray(LOCATION, arr)
                 }
             }

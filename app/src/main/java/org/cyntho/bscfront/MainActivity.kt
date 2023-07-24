@@ -218,7 +218,7 @@ class MainActivity : AppCompatActivity() {
         when (item.itemId){
             R.id.menu_bell -> {
                 // Toggle the notifications from here
-                toggleNotifications(true)
+                toggleNotifications()
             }
             R.id.menu_settings -> {
                 // Open settings
@@ -261,7 +261,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        toggleNotifications(false)
+        updateNotificationIcon()
     }
 
     override fun onDestroy() {
@@ -275,8 +275,16 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    private fun updateNotificationIcon(){
+        val settings = PreferenceManager.getDefaultSharedPreferences(this)
+        if (settings.getBoolean("switch_preference_notifications_global", true)){
+            menu?.getItem(0)?.setIcon(ContextCompat.getDrawable(applicationContext, R.drawable.ic_action_bell_thick_on))
+        } else {
+            menu?.getItem(0)?.setIcon(ContextCompat.getDrawable(applicationContext, R.drawable.ic_action_bell_thick_off))
+        }
+    }
 
-    private fun toggleNotifications(save: Boolean){
+    private fun toggleNotifications(){
 
         val settings = PreferenceManager.getDefaultSharedPreferences(this)
         val editor = settings.edit()
@@ -294,9 +302,10 @@ class MainActivity : AppCompatActivity() {
             }
         }
         // Save persistently
-        if (save){
-            editor.apply()
-        }
+        editor.apply()
+
+        // Update icon
+        updateNotificationIcon()
     }
 
     private fun addMessage(message: String) : Unit{
