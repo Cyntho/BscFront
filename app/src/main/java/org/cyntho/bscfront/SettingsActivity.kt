@@ -5,6 +5,10 @@ import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.SyncStateContract
+import android.view.MenuItem
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.addCallback
+import androidx.core.app.NavUtils
 import androidx.preference.Preference
 import androidx.preference.PreferenceManager
 import androidx.preference.SwitchPreference
@@ -17,28 +21,31 @@ class SettingsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        //setContentView(R.layout.activity_settings)
 
-
-        _username = intent.extras?.getString(USERNAME) ?: "empty"
-        _password = intent.extras?.getString(PASSWORD) ?: "empty"
+        _username = intent.extras?.getString("USERNAME") ?: "empty"
+        _password = intent.extras?.getString("PASSWORD") ?: "empty"
 
         println("CREATED SettingsActivity with: username = $_username, password = $_password")
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        //val f = SettingsFragment.newInstance(applicationContext, _username, _password)
-        supportFragmentManager.beginTransaction().replace(android.R.id.content, SettingsFragment()).commit()
+        val arr: Array<String>? = intent.extras?.getStringArray("LOCATIONS")
+        val f = SettingsFragment.newInstance(_username, _password, arr)
+        supportFragmentManager.beginTransaction().replace(android.R.id.content, f).commit()
     }
 
-    companion object {
-        private const val USERNAME = "USERNAME"
-        private const val PASSWORD = "PASSWORD"
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId){
+            android.R.id.home ->{
+                println("Moving up")
+                finish()
+                true
+            }
 
-        @JvmStatic
-        fun newIntent(context: Context, username: String, password: String): Intent {
-            val intent = Intent(context, MainActivity::class.java)
-            intent.putExtra(USERNAME, username)
-            intent.putExtra(PASSWORD, password)
-            return intent
+            else -> super.onOptionsItemSelected(item)
         }
     }
+
+
+
+
 }

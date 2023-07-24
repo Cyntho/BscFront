@@ -19,7 +19,7 @@ class KotlinMqtt(user: String, pass: String) {
 
     private val TAG: String = "KotlinMqtt"
 
-    private val host: String = "ssl://10.66.66.1"
+    private var host: String = "ssl://10.66.66.1"
     private val username: String = user
     private val password: String = pass
 
@@ -162,5 +162,34 @@ class KotlinMqtt(user: String, pass: String) {
         online = true
         running = true
     }
+
+
+    companion object {
+
+
+        @OptIn(DelicateCoroutinesApi::class)
+        suspend fun testConnection(context: Context, host: String, user: String, pass: String): Boolean {
+            val instance = KotlinMqtt(user, pass)
+            var success = false
+            val connection = GlobalScope.launch(CoroutineExceptionHandler {_, exception -> Log.w("KotlinMqtt", exception) }) {
+                try {
+                    instance.host = host
+                    instance.connect(context, {_ -> Unit}, {_ -> Unit}, {_ -> true}, {_ -> true})
+                    println("connected: ${instance.isOnline()}")
+                } catch (ex: Exception){
+                    ex.printStackTrace()
+                    return@launch
+                }
+                if (instance.isOnline()){
+                    instance.disconnect()
+                    success = true
+                }
+            }
+
+            connection.join()
+            return success
+        }
+    }
+
 
 }

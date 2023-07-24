@@ -10,6 +10,7 @@ import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.tabs.TabLayout
 import androidx.viewpager.widget.ViewPager
 import androidx.appcompat.app.AppCompatActivity
+import androidx.preference.PreferenceManager
 import kotlinx.coroutines.*
 import org.cyntho.bscfront.databinding.ActivityLoginBinding
 import org.cyntho.bscfront.exceptions.AuthException
@@ -52,8 +53,14 @@ class LoginActivity : AppCompatActivity() {
                 println("We are online!")
                 mqtt.disconnect()
 
+                val editor = PreferenceManager.getDefaultSharedPreferences(applicationContext).edit()
+                editor.putString("runtime_username", binding.txtUsername.text.toString())
+                editor.putString("runtime_password", binding.txtPassword.text.toString())
+                editor.apply()
+
                 val intent = MainActivity.newIntent(applicationContext, binding.txtUsername.text.toString(), binding.txtPassword.text.toString())
                 startActivity(intent)
+                finish()
             }
         }
     }

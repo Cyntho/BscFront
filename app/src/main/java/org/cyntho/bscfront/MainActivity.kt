@@ -2,6 +2,7 @@ package org.cyntho.bscfront
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
@@ -9,6 +10,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.media.RingtoneManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.Menu
@@ -18,10 +20,16 @@ import com.google.android.material.tabs.TabLayout
 import androidx.viewpager.widget.ViewPager
 import androidx.appcompat.app.AppCompatActivity
 import android.widget.Button
+import android.window.OnBackInvokedDispatcher
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.os.BuildCompat
 import androidx.fragment.app.createViewModelLazy
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -37,8 +45,10 @@ import org.cyntho.bscfront.exceptions.AuthException
 import org.cyntho.bscfront.net.KotlinMqtt
 import org.cyntho.bscfront.ui.main.PlaceholderFragment
 import org.cyntho.bscfront.ui.main.SettingsFragment
+import java.security.MessageDigest
 import java.sql.Time
 import java.time.Instant
+import java.util.Base64
 import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
@@ -57,6 +67,7 @@ class MainActivity : AppCompatActivity() {
     private var lastNotification: Long = 0
 
     private lateinit var sectionsPagerAdapter: SectionsPagerAdapter
+    private lateinit var locations: List<String>
 
     private lateinit var _username: String
     private lateinit var _password: String
@@ -66,9 +77,13 @@ class MainActivity : AppCompatActivity() {
 
         _username = intent.getStringExtra(USERNAME) ?: "empty"
         _password = intent.getStringExtra(PASSWORD) ?: "empty"
+        //_username = PreferenceManager.getDefaultSharedPreferences(this).getString("runtime_username", "")!!
+        //_password = PreferenceManager.getDefaultSharedPreferences(this).getString("runtime_password", "")!!
         println("CREATED MainActivity with: username = $_username, password = $_password")
 
         println("Called by: ${callingActivity}")
+
+        locations = mutableListOf()
 
         // Assign default settings
         PreferenceManager.setDefaultValues(this, R.xml.root_preferences, true)
@@ -98,7 +113,25 @@ class MainActivity : AppCompatActivity() {
         val tabs: TabLayout = binding.tabs
         tabs.setupWithViewPager(viewPager)
 
-        //mqtt = KotlinMqtt()
+        mqtt = KotlinMqtt(_username, _password)
+        try {
+            mqtt.connect(context = applicationContext,
+                funAdd = ::addMessage,
+                funRemove = ::removeMessage,
+                funMessages = ::onMessagesReceived,
+                funSettings = ::onSettingsReceived)
+        } catch (any: Exception){
+            println(any.message)
+        }
+
+        // Since onBackPressed() is deprecated:
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                println("MainActivity.handleOnBackPressed()")
+            }
+        })
+
+
 /*
         val frmLogin = binding.frmLogin
         val btnConnect: Button = binding.btnConnect*/
@@ -161,6 +194,26 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
+
+    private fun startSettings(){
+        val i = Intent(this@MainActivity, SettingsActivity::class.java)
+        val b = Bundle().apply {
+            putString(USERNAME, _username)
+            putString(PASSWORD, _password)
+            putStringArray("LOCATIONS", locations.toTypedArray())
+        }
+        i.putExtras(b)
+        resultLauncher.launch(i)
+    }
+
+    private var resultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){
+        if (it.resultCode == Activity.RESULT_OK){
+            val data: Intent? = it.data
+            println("resultLauncher sagt Feierabend")
+        }
+    }
+
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId){
             R.id.menu_bell -> {
@@ -170,7 +223,7 @@ class MainActivity : AppCompatActivity() {
             R.id.menu_settings -> {
                 // Open settings
 
-
+/*
                 val intent = Intent(this@MainActivity, SettingsActivity::class.java)
                 //val intent = SettingsActivity.newIntent(applicationContext, _username, _password)
                 val bundle: Bundle = Bundle().apply {
@@ -178,10 +231,13 @@ class MainActivity : AppCompatActivity() {
                     putString(PASSWORD, _password)
                 }
                 intent.putExtras(bundle)
-                startActivity(intent)
-                finish()
+                //startActivity(intent)*/
 
-                // supportFragmentManager.beginTransaction().replace(android.R.id.content, SettingsFragment()).commit()
+                startSettings()
+
+
+
+                //supportFragmentManager.beginTransaction().replace(android.R.id.content, SettingsFragment.newInstance(applicationContext, _username, _password)).commit()
 
             }
             R.id.menu_logout -> {
@@ -207,6 +263,18 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         toggleNotifications(false)
     }
+
+    override fun onDestroy() {
+        if (mqtt.isOnline()){
+            runBlocking {
+                mqtt.disconnect()
+            }
+        }
+
+        super.onDestroy()
+    }
+
+
 
     private fun toggleNotifications(save: Boolean){
 
@@ -283,12 +351,22 @@ class MainActivity : AppCompatActivity() {
 
                 spAdapter.setActivity(this)
                 val names = mutableListOf<String>()
+                val manager = PreferenceManager.getDefaultSharedPreferences(applicationContext)
+                val editor = manager.edit()
 
                 for (page in wrapper){
                     names.add(page.id!!, page.name!!)
+
+                    // Generate hash of 'username@location' for settings
+                    val h = hash("$_username@" + page.name!!)
+                    if (!manager.contains(h)){
+                        editor.putBoolean(h, true)
+                    }
                 }
+                editor.apply()
                 spAdapter.setTitles(names.toTypedArray())
                 spAdapter.setCounter(names.size)
+                locations = names
 
                 pager.adapter = spAdapter
                 pager.offscreenPageLimit = wrapper.size + 1
@@ -339,6 +417,7 @@ class MainActivity : AppCompatActivity() {
         fragments.remove(id)
     }
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     @SuppressLint("ServiceCast")
     private fun notifyUser(message: StatusMessage){
 
@@ -391,6 +470,11 @@ class MainActivity : AppCompatActivity() {
             intent.putExtra(USERNAME, username)
             intent.putExtra(PASSWORD, password)
             return intent
+        }
+
+        @JvmStatic
+        fun hash(message: String) : String {
+            return Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(message.toByteArray()))
         }
     }
 

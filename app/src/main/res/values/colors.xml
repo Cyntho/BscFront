@@ -8,8 +8,7 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <color name="background_error">#d92b2b</color>
-    <color name="background_info">#d4d402</color>
-    <color name="background_status">#139e38</color>
-
+    <color name="background_error">#BD0000</color>
+    <color name="background_info">#D1D100</color>
+    <color name="background_status">#006019</color>
 </resources>

@@ -17,38 +17,19 @@
                 android:title="@string/settings_notifications_vibrate"
                 android:dependency="switch_preference_notifications_global"
         />
+        <SwitchPreference
+                android:key="switch_preference_notifications_sound"
+                android:defaultValue="true"
+                android:title="@string/settings_notifications_sound"
+                android:dependency="switch_preference_notifications_global"
+        />
     </PreferenceCategory>
     <PreferenceCategory
-            app:title="@string/messages_header">
+            app:title="@string/settings_notifications_pick_location"
+            android:id="@+id/category_per_location"
+    >
 
-        <EditTextPreference
-                app:key="signature"
-                app:title="@string/signature_title"
-                app:useSimpleSummaryProvider="true"/>
 
-        <ListPreference
-                app:key="reply"
-                app:title="@string/reply_title"
-                app:entries="@array/reply_entries"
-                app:entryValues="@array/reply_values"
-                app:defaultValue="reply"
-                app:useSimpleSummaryProvider="true"/>
-
-    </PreferenceCategory>
-
-    <PreferenceCategory
-            app:title="@string/sync_header">
-
-        <SwitchPreferenceCompat
-                app:key="sync"
-                app:title="@string/sync_title"/>
-
-        <SwitchPreferenceCompat
-                app:key="attachment"
-                app:title="@string/attachment_title"
-                app:summaryOn="@string/attachment_summary_on"
-                app:summaryOff="@string/attachment_summary_off"
-                app:dependency="sync"/>
 
     </PreferenceCategory>
 

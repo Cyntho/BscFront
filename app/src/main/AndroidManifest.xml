@@ -18,36 +18,43 @@
             android:requestLegacyExternalStorage="true"
             android:supportsRtl="true"
             android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar">
-
-        />
         <activity
-                android:name=".SettingsActivity"
-                android:exported="false"
-                android:label="@string/btn_menu_settings"
-                android:parentActivityName=".MainActivity"
-                android:theme="@style/Theme.AppCompat.DayNight.DarkActionBar">
-            <meta-data
-                    android:name="android.support.PARENT_ACTIVITY"
-                    android:value=".MainActivity"/>
-        </activity>
-        <activity
-                android:name=".LoginActivity"
-                android:theme="@style/Theme.AppCompat.DayNight.DarkActionBar">
+                android:name=".SetupActivity"
+                android:theme="@style/Theme.AppCompat.DayNight.DarkActionBar"
+        >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <activity
+                android:name=".SettingsActivity"
+                android:exported="true"
+                android:label="@string/btn_menu_settings"
+                android:theme="@style/Theme.AppCompat.DayNight.DarkActionBar">
+            <meta-data
+                    android:name="android.support.PARENT_ACTIVITY"
+                    android:value=".MainActivity">
+            </meta-data>
+        </activity>
+        <activity
+                android:name=".LoginActivity"
+                android:theme="@style/Theme.AppCompat.DayNight.DarkActionBar">
+
+        </activity>
 
         <service android:name="org.eclipse.paho.android.service.MqttService"/>
 
         <activity
                 android:name=".MainActivity"
+                android:alwaysRetainTaskState="true"
                 android:exported="true"
                 android:label="@string/title_activity_main2"
+                android:noHistory="false"
                 android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
         </activity>
+
 
     </application>
 
