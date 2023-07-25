@@ -2,8 +2,6 @@ package org.cyntho.bscfront
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
@@ -16,13 +14,11 @@ import android.os.Bundle
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
-import android.view.View
 import com.google.android.material.tabs.TabLayout
 import androidx.viewpager.widget.ViewPager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.registerForActivityResult
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
@@ -31,7 +27,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.preference.PreferenceManager
-import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
 import kotlinx.coroutines.*
 import org.cyntho.bscfront.data.LocationWrapper
@@ -41,7 +36,6 @@ import org.cyntho.bscfront.databinding.ActivityMainBinding
 import org.cyntho.bscfront.net.KotlinMqtt
 import org.cyntho.bscfront.net.MqttCallbackRuntime
 import org.cyntho.bscfront.ui.main.PlaceholderFragment
-import org.eclipse.paho.mqttv5.client.IMqttToken
 import org.eclipse.paho.mqttv5.client.MqttDisconnectResponse
 import org.eclipse.paho.mqttv5.common.MqttException
 import java.security.MessageDigest
@@ -53,7 +47,6 @@ import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
 
-    private val TAG: String = "BscFront/MainActivity"
     private var menu: Menu? = null
 
     private val data: MutableCollection<StatusMessage> = mutableListOf()
@@ -124,7 +117,7 @@ class MainActivity : AppCompatActivity() {
         try {
             mqtt.connect(context = applicationContext, callbacks)
         } catch (any: Exception){
-            println(any.message)
+            Log.e(TAG, any.message.toString())
         }
 
         // Since onBackPressed() is deprecated:
@@ -169,12 +162,7 @@ class MainActivity : AppCompatActivity() {
         // Since startActivityForResult is deprecated, this seems to be the way to go
         resultLauncher.launch(i)
     }
-    private var resultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){
-        if (it.resultCode == Activity.RESULT_OK){
-            val data: Intent? = it.data
-            println("resultLauncher sagt Feierabend")
-        }
-    }
+    private var resultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){}
 
 
     /**
@@ -287,7 +275,7 @@ class MainActivity : AppCompatActivity() {
      * [PlaceholderFragment.onAddMessage]
      */
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    private fun addMessage(message: String) : Unit{
+    private fun addMessage(message: String) {
         try {
             val wrapper = Gson().fromJson(message.trimIndent(), StatusMessage::class.java)
             data.add(wrapper)
@@ -316,7 +304,7 @@ class MainActivity : AppCompatActivity() {
      * Unwraps received json to [StatusMessage] and forwards it to the corresponding fragment
      * [PlaceholderFragment.onRemoveMessage]
      */
-    private fun removeMessage(message: String) : Unit {
+    private fun removeMessage(message: String) {
         try {
             val wrapper = Gson().fromJson(message.trimIndent(), StatusMessage::class.java)
             val fragment = fragments[wrapper.location]
@@ -402,7 +390,7 @@ class MainActivity : AppCompatActivity() {
         try {
             val entry: StatusMessage = Gson().fromJson(messages, StatusMessage::class.java)
 
-            val f: PlaceholderFragment? = fragments[entry.location] as PlaceholderFragment?
+            val f: PlaceholderFragment? = fragments[entry.location]
             if (f == null){
                 Log.e(TAG, "Unable to resolve fragment by location id ${entry.location}")
                 return false
@@ -461,6 +449,9 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    /**
+     * Handling of connection loss
+     */
     @OptIn(DelicateCoroutinesApi::class)
     private suspend fun reconnect(){
         // Attempt to reconnect
@@ -474,7 +465,7 @@ class MainActivity : AppCompatActivity() {
                 return@launch
             } catch (any: Exception){
                 // [any] includes AuthException here, although it SHOULD not occur
-                println("Received unknown exception:")
+                Log.e(TAG, "Received unknown exception:")
                 any.printStackTrace()
             }
         }
@@ -485,7 +476,7 @@ class MainActivity : AppCompatActivity() {
             reconnectAttempts = 0
         } else {
             reconnectTimeout = ((reconnectTimeout * 1.2).toLong())
-            println("Reconnect failed. Waiting [$reconnectAttempts / $reconnectMaxAttempts]${reconnectTimeout / 1000} seconds")
+            Log.w(TAG, "Reconnect failed. Waiting [$reconnectAttempts / $reconnectMaxAttempts]${reconnectTimeout / 1000} seconds")
             runBlocking {
                 Thread.sleep(reconnectTimeout)
                 reconnect()
@@ -493,8 +484,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Ignored for now
+     */
     private fun onErrorOccurred(exception: MqttException?){
-        println("onErrorOccurred: ${exception?.message}")
+        Log.e(TAG, "onErrorOccurred: ${exception?.message}")
     }
 
 
@@ -580,6 +574,10 @@ class MainActivity : AppCompatActivity() {
         requestNotification(builder)
     }
 
+
+    /**
+     * Sends a pre-build notification to the user
+     */
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun requestNotification(builder: NotificationCompat.Builder){
         with (NotificationManagerCompat.from(this)){
@@ -598,6 +596,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val USERNAME = "USERNAME"
         private const val PASSWORD = "PASSWORD"
+        private const val TAG      = "MainActivity"
 
         @JvmStatic
         fun newIntent(context: Context, username: String, password: String): Intent {

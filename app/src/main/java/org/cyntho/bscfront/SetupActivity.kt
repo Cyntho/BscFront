@@ -2,12 +2,10 @@ package org.cyntho.bscfront
 
 import android.app.Activity
 import android.content.Intent
-import android.net.Uri
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.widget.Toast
+import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.result.registerForActivityResult
 import androidx.preference.PreferenceManager
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.runBlocking
@@ -34,22 +32,17 @@ class SetupActivity : AppCompatActivity() {
         binding = ActivitySetupBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val editor = PreferenceManager.getDefaultSharedPreferences(this).edit()
-        editor.putString("runtime_username", "")
-        editor.putString("runtime_password", "")
-        editor.apply()
-
         // Instantly forward?
         if (PreferenceManager.getDefaultSharedPreferences(this).getBoolean("setup_complete", false)){
             startActivity(Intent(applicationContext, LoginActivity::class.java))
             finish()
         }
 
-        val intentOpenFile = Intent(Intent.ACTION_GET_CONTENT)
-
         val btnSelectCaPem = binding.btnSelectCaPem
+        val intentOpenFile = Intent(Intent.ACTION_GET_CONTENT)
         intentOpenFile.type = "*/*"
 
+        // toggle test status whenever one of these fields is focused again to prevent manipulation after testing
         binding.txtServerIp.setOnFocusChangeListener { _, _ -> revertTestStatus() }
         binding.txtClientId.setOnFocusChangeListener { _, _ -> revertTestStatus() }
         binding.txtClientName.setOnFocusChangeListener { _, _ -> revertTestStatus() }
@@ -78,8 +71,8 @@ class SetupActivity : AppCompatActivity() {
         val btnNext = binding.btnNext
         btnNext.setOnClickListener {
             if (tested){
+                // prerequisites okay. Save settings and continue to [MainActivity]
                 val editor = PreferenceManager.getDefaultSharedPreferences(this).edit()
-
                 editor.putString("connection_client_id", binding.txtClientId.text.toString())
                 editor.putString("connection_server_ip", binding.txtServerIp.text.toString())
                 editor.putBoolean("setup_complete", true)
@@ -104,11 +97,11 @@ class SetupActivity : AppCompatActivity() {
                                 Snackbar.make(binding.btnNext, resources.getString(R.string.msg_err_connection_failed), Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
                             }
                         } catch (auth: AuthException){
-                            Snackbar.make(binding.btnNext, "Username or password wrong", Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
+                            Snackbar.make(binding.btnNext, getString(R.string.msg_err_connection_auth), Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
                         } catch (timout: TimeoutException){
-                            Snackbar.make(binding.btnNext, "Unable to connect to the server", Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
+                            Snackbar.make(binding.btnNext, getString(R.string.msg_err_connection_failed), Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
                         } catch (any: Exception){
-                            Snackbar.make(binding.btnNext, "Unknown error occurred", Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
+                            Snackbar.make(binding.btnNext, getString(R.string.msg_err_connection_failed), Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
                         }
                     }
 
@@ -135,7 +128,7 @@ class SetupActivity : AppCompatActivity() {
             writer.close()
             return true
         } catch (any: Exception){
-            println(any.message)
+            Log.e(TAG, any.message.toString())
         }
         return false
     }
@@ -172,6 +165,10 @@ class SetupActivity : AppCompatActivity() {
                 any.printStackTrace()
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "SetupActivity"
     }
 
 }

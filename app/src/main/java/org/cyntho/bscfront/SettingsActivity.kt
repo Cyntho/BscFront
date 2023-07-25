@@ -1,17 +1,8 @@
 package org.cyntho.bscfront
 
-import android.content.Context
-import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.provider.SyncStateContract
 import android.view.MenuItem
-import androidx.activity.OnBackPressedCallback
-import androidx.activity.addCallback
-import androidx.core.app.NavUtils
-import androidx.preference.Preference
-import androidx.preference.PreferenceManager
-import androidx.preference.SwitchPreference
 import org.cyntho.bscfront.ui.main.SettingsFragment
 
 class SettingsActivity : AppCompatActivity() {
@@ -24,6 +15,9 @@ class SettingsActivity : AppCompatActivity() {
         supportFragmentManager.beginTransaction().replace(android.R.id.content, f).commit()
     }
 
+    /**
+     * Overriding this to handle the click on the 'back arrow' in the top left of the ActionBar
+     */
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId){
             android.R.id.home ->{

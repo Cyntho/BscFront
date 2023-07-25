@@ -1,18 +1,15 @@
 package org.cyntho.bscfront.ui.main
 
-import android.content.Context
-import android.content.Intent
 import android.os.Bundle
-import androidx.lifecycle.ViewModelProvider
-import androidx.preference.MultiSelectListPreference
-import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
-import androidx.preference.PreferenceManager
 import androidx.preference.SwitchPreference
 import org.cyntho.bscfront.MainActivity
 import org.cyntho.bscfront.R
-import org.cyntho.bscfront.SettingsActivity
 
+
+/**
+ * This fragment handles the dynamic loading of saved preferences
+ */
 class SettingsFragment : PreferenceFragmentCompat() {
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
@@ -26,11 +23,10 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
             if (arr != null && user != null){
 
+                // Load all previously saved settings for the current [user]
                 for (entry in arr){
                     val opt = SwitchPreference(requireContext()).apply {
                         key = MainActivity.hash("$user@$entry")
-
-                        println("Hashing user@entry = $user@$entry = $key")
                         title = entry
                         isPersistent = true
                     }

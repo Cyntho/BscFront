@@ -2,7 +2,7 @@ package org.cyntho.bscfront.net
 
 import android.content.Context
 import android.util.Log
-import com.google.android.material.tabs.TabLayout
+import androidx.preference.PreferenceManager
 import kotlinx.coroutines.*
 import org.cyntho.bscfront.exceptions.AuthException
 import org.eclipse.paho.mqttv5.client.*
@@ -12,19 +12,17 @@ import org.eclipse.paho.mqttv5.common.MqttMessage
 import org.eclipse.paho.mqttv5.common.packet.MqttProperties
 import java.io.File
 import java.io.IOException
-import java.util.*
 import java.util.concurrent.TimeoutException
 
 class KotlinMqtt(user: String, pass: String) {
 
-    private val TAG: String = "KotlinMqtt"
+    private var host: String? = null
+    private var clientId: String = "uninitialized_client"
 
-    private var host: String = "ssl://10.66.66.1"
     private val username: String = user
-    private val password: String = pass
+    private val sslPathCA: String = "certs/ca.pem"
 
-    private val sslCA: String = "certs/ca.pem"
-    private val clientId: String = "phone-01"
+    private val password: String = pass
 
     private var client: MqttAsyncClient? = null
 
@@ -34,8 +32,18 @@ class KotlinMqtt(user: String, pass: String) {
 
     private var context: Context? = null
 
-    fun isOnline(): Boolean { return running && online}
 
+    /**
+     * Attempts to connect the async MQTT client to the server.
+     *
+     * [host]       needs to be specified in preferences under 'connection_server_ip'
+     * [clientId]   needs to be specified in preferences under 'connection_client_id'
+     *
+     * @param context   usually application context
+     * @param callbacks implementation of [MqttCallbackRuntime] that forwards callbacks accordingly
+     *
+     * @throws AuthException
+     */
     fun connect(context: Context,
                 callbacks: MqttCallbackRuntime){
         try {
@@ -48,6 +56,8 @@ class KotlinMqtt(user: String, pass: String) {
             if (running) return
             running = true
 
+            host = PreferenceManager.getDefaultSharedPreferences(context).getString("connection_server_ip", "") ?: ""
+            clientId = PreferenceManager.getDefaultSharedPreferences(context).getString("connection_client_id", "") ?: ""
 
             // Assign callbacks
             client = MqttAsyncClient(host, clientId, MemoryPersistence())
@@ -67,6 +77,9 @@ class KotlinMqtt(user: String, pass: String) {
         }
     }
 
+    /**
+     * Attempt to disconnect from the server.
+     */
     suspend fun disconnect(){
         if (running){
             running = false
@@ -79,19 +92,27 @@ class KotlinMqtt(user: String, pass: String) {
                 client!!.close()
 
                 Log.i(TAG, "Disconnected form the Server.")
+
             } catch (any: Exception){
-                println("Error: ${any.message}")
+                Log.w(TAG, "Error: ${any.message}")
             } finally {
                 online = false
             }
         }
     }
 
-    public fun getClient(): MqttAsyncClient? { return client }
 
+    /**
+     * Handling of ongoing connection to the server.
+     *
+     * @param client The client used for the connection
+     *
+     * @throws  AuthException    Thrown when username or password are incorrect
+     * @throws  TimeoutException Thrown when the connection timed out
+     */
     private fun listen(client: MqttAsyncClient){
 
-        println("Connecting..")
+        Log.i(TAG, "Connecting..")
 
         val options = MqttConnectionOptions()
         options.isCleanStart = false
@@ -110,7 +131,7 @@ class KotlinMqtt(user: String, pass: String) {
         try {
             // ToDo: Change this to use a two-way certificate exchange.
             // Unable to do so for this project since my ssl-certificates are self-signed
-            val factory = SslUtils.getSingleSocketFactory(File(context!!.filesDir, sslCA).inputStream())
+            val factory = SslUtils.getSingleSocketFactory(File(context!!.filesDir, sslPathCA).inputStream())
 
             options.socketFactory = factory
             Log.d(TAG, "SSL factory setup")
@@ -151,25 +172,46 @@ class KotlinMqtt(user: String, pass: String) {
         client.subscribe("messages/add", 2)
         client.subscribe("messages/remove", 2)
 
-
-        println("Granted QoS: ${token.grantedQos.toList().toString()}")
-
         online = true
         running = true
     }
 
+    /**
+     * Check whether the client is online or not
+     */
+    fun isOnline(): Boolean { return running && online}
+
+
+    /**
+     * Public getter for the currently used MqttAsyncClient [client]
+     */
+    fun getClient(): MqttAsyncClient? { return client }
 
     companion object {
+
+        private const val TAG: String = "KotlinMqtt"
+
+        /**
+         * Static method to test the connection without using callbacks
+         */
         @OptIn(DelicateCoroutinesApi::class)
+        @JvmStatic
         suspend fun testConnection(context: Context, host: String, user: String, pass: String): Boolean {
             val instance = KotlinMqtt(user, pass)
-            val callbacks = MqttCallbackRuntime({_ -> Unit}, {_ -> Unit}, {_ -> true}, {_ -> true}, null, null, null)
+            val callbacks = MqttCallbackRuntime({_ -> }, {_ -> }, {_ -> true}, {_ -> true}, null, null, null)
             var success = false
             val connection = GlobalScope.launch(CoroutineExceptionHandler {_, exception -> Log.w("KotlinMqtt", exception) }) {
                 try {
                     instance.host = host
                     instance.connect(context, callbacks)
-                    println("connected: ${instance.isOnline()}")
+
+                    if (instance.isOnline()){
+                        Log.i("KotlinMqtt", "Connection successful")
+                        success = true
+                    } else {
+                        Log.w("KotlinMqtt", "Connection failed")
+                    }
+
                 } catch (any: Exception){
                     if (any.message == null){
                         throw Exception("Unknown error occurred")
@@ -178,10 +220,8 @@ class KotlinMqtt(user: String, pass: String) {
                     } else {
                         throw TimeoutException("Unable to connect to the server. It may be offline?")
                     }
-                }
-                if (instance.isOnline()){
+                } finally {
                     instance.disconnect()
-                    success = true
                 }
             }
 

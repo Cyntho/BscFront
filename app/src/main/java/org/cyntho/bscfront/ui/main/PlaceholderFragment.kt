@@ -1,5 +1,6 @@
 package org.cyntho.bscfront.ui.main
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -25,18 +26,11 @@ import java.time.format.DateTimeFormatter
  */
 class PlaceholderFragment : Fragment() {
 
-    private val TAG = "PlaceholderFragment"
 
     private lateinit var pageViewModel: PageViewModel
-    private var _binding: FragmentMainBinding? = null
-
-    // This property is only valid between onCreateView and
-    // onDestroyView.
     private val binding get() = _binding!!
 
-    private lateinit var onAddMessage: (msg: StatusMessage) -> Unit?
-    private lateinit var onRemoveMessage: (id: Int) -> Unit?
-
+    private var _binding: FragmentMainBinding? = null
     private var main: MainActivity? = null
     private var inf: LayoutInflater? = null
 
@@ -48,19 +42,16 @@ class PlaceholderFragment : Fragment() {
             setIndex(arguments?.getInt(ARG_SECTION_NUMBER) ?: 1)
         }
 
-        // println("PlaceholderFragment.OnCreate() ${pageViewModel.getIndex()}")
-
         if (main != null){
             main!!.addFragment(this, pageViewModel.getIndex())
         }
-
         messages = mutableListOf()
     }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
 
         pageViewModel = ViewModelProvider(this).get(PageViewModel::class.java).apply {
             setIndex(arguments?.getInt(ARG_SECTION_NUMBER) ?: 1)
@@ -73,13 +64,8 @@ class PlaceholderFragment : Fragment() {
     }
 
 
+    @SuppressLint("InflateParams")
     fun onAddMessage(message: StatusMessage){
-        /*val view: TextView = TextView(context)
-        view.text = message
-        binding.layoutWrapper.addView(view)*/
-        // println("Called onMessageReceived() on fragment ${pageViewModel.getIndex()} with message [$message]")
-        //pageViewModel.addMessage(message)
-
         main?.runOnUiThread {
 
             val v = inf?.inflate(R.layout.list_entry, null)
@@ -141,9 +127,6 @@ class PlaceholderFragment : Fragment() {
                 }
 
                 container.addView(v, messages.indexOf(message))
-
-                // Log.d(TAG, "Added message with id ${message.id} to view at index $index")
-
             } else {
                 Log.w(TAG, "Unable to resolve one or more elements in the UI")
             }
@@ -177,6 +160,8 @@ class PlaceholderFragment : Fragment() {
          */
         private const val ARG_SECTION_NUMBER = "section_number"
 
+        private const val TAG = "PlaceholderFragment"
+
         /**
          * Returns a new instance of this fragment for the given section
          * number.
@@ -189,7 +174,6 @@ class PlaceholderFragment : Fragment() {
                 }
             }
 
-            println("PlaceholderFragment.newInstance($sectionNumber)")
             value.main = m
             return value
         }
@@ -198,10 +182,8 @@ class PlaceholderFragment : Fragment() {
 
     override fun onDestroyView() {
 
-        //println("PlaceholderFragment.OnDestroyView() ${pageViewModel.getIndex()}")
-
+        // The fragment should remove itself from the MainActivity's list
         if (main != null){
-            //println("PlaceholderFragment.onDelete() with id ${pageViewModel.getIndex()}")
             main!!.removeFragment(pageViewModel.getIndex())
         }
 

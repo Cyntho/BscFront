@@ -10,28 +10,23 @@ import org.eclipse.paho.mqttv5.common.MqttMessage
 import org.eclipse.paho.mqttv5.common.packet.MqttProperties
 import java.util.*
 
-class MqttCallbackRuntime(addCallback: (m: String) -> Unit?,
-                          removeCallback: (m: String) -> Unit?,
-                          settingsCallback: (m: String) -> Boolean,
-                          messagesCallback: (m: String) -> Boolean,
-                          disconnectCallback: ((MqttDisconnectResponse?) -> Unit?)?,
-                          errorCallback: ((MqttException?) -> Unit?)?,
-                          clientInstance: MqttAsyncClient?) : MqttCallback{
+/**
+ * Extension of [MqttCallback]
+ *
+ * Provides functionality to respond to messages in topics specified to this application.
+ * Forwards messages to the UI accordingly
+ */
+class MqttCallbackRuntime(private val callbackMessageAdd: (m: String) -> Unit?,
+                          private val callbackMessageRemove: (m: String) -> Unit?,
+                          private val callbackSettings: (m: String) -> Boolean,
+                          private val callbackMessages: (m: String) -> Boolean,
+                          private val callbackDisconnect: ((MqttDisconnectResponse?) -> Unit?)?,
+                          private val callbackError: ((MqttException?) -> Unit?)?,
+                          private val client: MqttAsyncClient?) : MqttCallback{
 
 
-    private val TAG: String = "MqttCallbackRuntime"
     private var initialized: Boolean = false
-    private val messageQueue: Queue<String> = LinkedList<String>()
-
-    private val callbackMessageAdd: (m: String) -> Unit? = addCallback
-    private val callbackMessageRemove: (m: String) -> Unit? = removeCallback
-    private val callbackSettings: (m: String) -> Boolean = settingsCallback
-    private val callbackMessages: (m: String) -> Boolean = messagesCallback
-    private val callbackDisconnect: ((MqttDisconnectResponse?) -> Unit?)? = disconnectCallback
-    private val callbackError: ((MqttException?) -> Unit?)? = errorCallback
-
-
-    private val client: MqttAsyncClient? = clientInstance
+    private val messageQueue: Queue<String> = LinkedList()
 
     override fun messageArrived(topic: String?, message: MqttMessage?) {
         if (message != null){
@@ -86,12 +81,10 @@ class MqttCallbackRuntime(addCallback: (m: String) -> Unit?,
     }
 
     override fun disconnected(disconnectResponse: MqttDisconnectResponse?) {
-        Log.i(TAG, "Disconnected: ${disconnectResponse.toString()}")
         callbackDisconnect?.let { it(disconnectResponse) }
     }
 
     override fun mqttErrorOccurred(exception: MqttException?) {
-        Log.e(TAG, "Error: ${exception?.message}")
         callbackError?.let { it(exception) }
     }
 
@@ -101,4 +94,8 @@ class MqttCallbackRuntime(addCallback: (m: String) -> Unit?,
 
     override fun deliveryComplete(token: IMqttToken?) {}
     override fun authPacketArrived(reasonCode: Int, properties: MqttProperties?) {}
+
+    companion object{
+        private const val TAG: String = "MqttCallbackRuntime"
+    }
 }
