@@ -12,8 +12,10 @@ import androidx.preference.PreferenceManager
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.runBlocking
 import org.cyntho.bscfront.databinding.ActivitySetupBinding
+import org.cyntho.bscfront.exceptions.AuthException
 import org.cyntho.bscfront.net.KotlinMqtt
 import java.io.File
+import java.util.concurrent.TimeoutException
 
 class SetupActivity : AppCompatActivity() {
 
@@ -93,12 +95,20 @@ class SetupActivity : AppCompatActivity() {
                     writeToFile(dataPem, File(applicationContext.filesDir, "certs/client.pem"))
 
                     runBlocking {
-                        if (KotlinMqtt.testConnection(applicationContext, binding.txtServerIp.text.toString(), binding.txtClientName.text.toString(), binding.txtClientPassword.text.toString())){
-                            tested = true
-                            btnNext.text = resources.getString(R.string.txt_setup_complete)
-                            btnNext.setBackgroundColor(resources.getColor(R.color.background_status, theme))
-                        } else {
-                            Snackbar.make(binding.btnNext, resources.getString(R.string.msg_err_connection_failed), Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
+                        try {
+                            if (KotlinMqtt.testConnection(applicationContext, binding.txtServerIp.text.toString(), binding.txtClientName.text.toString(), binding.txtClientPassword.text.toString())){
+                                tested = true
+                                btnNext.text = resources.getString(R.string.txt_setup_complete)
+                                btnNext.setBackgroundColor(resources.getColor(R.color.background_status, theme))
+                            } else {
+                                Snackbar.make(binding.btnNext, resources.getString(R.string.msg_err_connection_failed), Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
+                            }
+                        } catch (auth: AuthException){
+                            Snackbar.make(binding.btnNext, "Username or password wrong", Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
+                        } catch (timout: TimeoutException){
+                            Snackbar.make(binding.btnNext, "Unable to connect to the server", Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
+                        } catch (any: Exception){
+                            Snackbar.make(binding.btnNext, "Unknown error occurred", Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
                         }
                     }
 

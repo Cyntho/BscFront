@@ -9,6 +9,7 @@
 
     <string name="msg_no_errors">Es liegen keine Störungen vor!</string>
     <string name="msg_err_connection_failed">Verbindung zum Server fehlgeschlagen</string>
+    <string name="msg_err_connection_lost_long">Die Verbindung zum Server wurder verloren. Bitte melden Sie sich erneut an!</string>
     <string name="msg_err_connection_auth">Benutzername oder Passwort falsch</string>
     <string name="msg_err_missing_data">Fehlende Eingaben</string>
 

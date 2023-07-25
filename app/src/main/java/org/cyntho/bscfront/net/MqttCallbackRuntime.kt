@@ -14,7 +14,9 @@ class MqttCallbackRuntime(addCallback: (m: String) -> Unit?,
                           removeCallback: (m: String) -> Unit?,
                           settingsCallback: (m: String) -> Boolean,
                           messagesCallback: (m: String) -> Boolean,
-                          clientInstance: MqttAsyncClient) : MqttCallback{
+                          disconnectCallback: ((MqttDisconnectResponse?) -> Unit?)?,
+                          errorCallback: ((MqttException?) -> Unit?)?,
+                          clientInstance: MqttAsyncClient?) : MqttCallback{
 
 
     private val TAG: String = "MqttCallbackRuntime"
@@ -25,8 +27,11 @@ class MqttCallbackRuntime(addCallback: (m: String) -> Unit?,
     private val callbackMessageRemove: (m: String) -> Unit? = removeCallback
     private val callbackSettings: (m: String) -> Boolean = settingsCallback
     private val callbackMessages: (m: String) -> Boolean = messagesCallback
+    private val callbackDisconnect: ((MqttDisconnectResponse?) -> Unit?)? = disconnectCallback
+    private val callbackError: ((MqttException?) -> Unit?)? = errorCallback
 
-    private val client: MqttAsyncClient = clientInstance
+
+    private val client: MqttAsyncClient? = clientInstance
 
     override fun messageArrived(topic: String?, message: MqttMessage?) {
         if (message != null){
@@ -52,10 +57,10 @@ class MqttCallbackRuntime(addCallback: (m: String) -> Unit?,
                     "res/settings" -> {
                         if (initialized){
                             Log.w(TAG, "Already initialized!")
-                            client.unsubscribe("res/settings")
+                            client?.unsubscribe("res/settings")
                         } else {
                             if (callbackSettings(String(message.payload))){
-                                client.unsubscribe("res/settings")
+                                client?.unsubscribe("res/settings")
 
                                 // Dequeue all messages already received
                                 var entry = messageQueue.poll()
@@ -82,10 +87,12 @@ class MqttCallbackRuntime(addCallback: (m: String) -> Unit?,
 
     override fun disconnected(disconnectResponse: MqttDisconnectResponse?) {
         Log.i(TAG, "Disconnected: ${disconnectResponse.toString()}")
+        callbackDisconnect?.let { it(disconnectResponse) }
     }
 
     override fun mqttErrorOccurred(exception: MqttException?) {
         Log.e(TAG, "Error: ${exception?.message}")
+        callbackError?.let { it(exception) }
     }
 
     override fun connectComplete(reconnect: Boolean, serverURI: String?) {

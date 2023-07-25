@@ -29,6 +29,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
                 for (entry in arr){
                     val opt = SwitchPreference(requireContext()).apply {
                         key = MainActivity.hash("$user@$entry")
+
+                        println("Hashing user@entry = $user@$entry = $key")
                         title = entry
                         isPersistent = true
                     }

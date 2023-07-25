@@ -15,6 +15,7 @@ import kotlinx.coroutines.*
 import org.cyntho.bscfront.databinding.ActivityLoginBinding
 import org.cyntho.bscfront.exceptions.AuthException
 import org.cyntho.bscfront.net.KotlinMqtt
+import org.cyntho.bscfront.net.MqttCallbackRuntime
 import org.cyntho.bscfront.ui.main.SectionsPagerAdapter
 import java.util.concurrent.TimeoutException
 
@@ -40,37 +41,28 @@ class LoginActivity : AppCompatActivity() {
     @OptIn(DelicateCoroutinesApi::class)
     private fun clicked(){
         val mqtt = KotlinMqtt(binding.txtUsername.text.toString(), binding.txtPassword.text.toString())
+        val callbacks = MqttCallbackRuntime({_ -> Unit}, {_ -> Unit}, {_ -> true}, {_ -> true}, null, null, null)
+
         connect = GlobalScope.launch(CoroutineExceptionHandler {_, exception -> Log.w(TAG, exception) }) {
             try {
-                mqtt.connect(applicationContext, ::callback, ::callback, ::boolCB, ::boolCB)
+                mqtt.connect(applicationContext, callbacks)
+                //KotlinMqtt.testConnection(applicationContext, host, binding.txtUsername.text.toString(), binding.txtPassword.text.toString())
             } catch (ex: AuthException){
-                Snackbar.make(binding.viewPager, "Username or password wrong", Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
+                Snackbar.make(binding.viewPager, getString(R.string.msg_err_connection_auth), Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
             } catch (timeout: TimeoutException) {
-                Snackbar.make(binding.viewPager, "Unable to connect to the server", Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
+                Snackbar.make(binding.viewPager, getString(R.string.msg_err_connection_failed), Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
             }
 
-            if (mqtt.isOnline()) {
+            if (mqtt.isOnline()){
                 println("We are online!")
                 mqtt.disconnect()
-
-                val editor = PreferenceManager.getDefaultSharedPreferences(applicationContext).edit()
-                editor.putString("runtime_username", binding.txtUsername.text.toString())
-                editor.putString("runtime_password", binding.txtPassword.text.toString())
-                editor.apply()
 
                 val intent = MainActivity.newIntent(applicationContext, binding.txtUsername.text.toString(), binding.txtPassword.text.toString())
                 startActivity(intent)
                 finish()
             }
+
         }
     }
-
-    private fun callback(m: String) : Unit {
-        println(m)
-    }
-
-    private fun boolCB(m: String) : Boolean { return true }
-
-
 
 }

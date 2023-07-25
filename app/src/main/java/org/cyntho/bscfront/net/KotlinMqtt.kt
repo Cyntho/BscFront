@@ -32,17 +32,12 @@ class KotlinMqtt(user: String, pass: String) {
     private var online: Boolean = false
     private var listener: Job? = null
 
-    private lateinit var mqttCallback: MqttCallbackRuntime
-
     private var context: Context? = null
 
     fun isOnline(): Boolean { return running && online}
 
     fun connect(context: Context,
-                funAdd: (m: String) -> Unit?,
-                funRemove: (m: String) -> Unit?,
-                funSettings: (m: String) -> Boolean,
-                funMessages: (m: String) -> Boolean){
+                callbacks: MqttCallbackRuntime){
         try {
 
             if (this.context == null){
@@ -56,8 +51,7 @@ class KotlinMqtt(user: String, pass: String) {
 
             // Assign callbacks
             client = MqttAsyncClient(host, clientId, MemoryPersistence())
-            mqttCallback = MqttCallbackRuntime(funAdd, funRemove, funSettings, funMessages, client!!)
-            client!!.setCallback(mqttCallback)
+            client!!.setCallback(callbacks)
 
             runBlocking {
                 listener = launch {
@@ -93,7 +87,7 @@ class KotlinMqtt(user: String, pass: String) {
         }
     }
 
-
+    public fun getClient(): MqttAsyncClient? { return client }
 
     private fun listen(client: MqttAsyncClient){
 
@@ -110,6 +104,7 @@ class KotlinMqtt(user: String, pass: String) {
         // Disable hostname verification since we're using a self-signed certificate
         // ToDo: Change this to 'true' for a production environment
         options.isHttpsHostnameVerificationEnabled = false
+
 
         // Setup SSL
         try {
@@ -145,16 +140,16 @@ class KotlinMqtt(user: String, pass: String) {
             }
         }
 
-        client.subscribe("res/settings", 1)
-        client.subscribe("res/messages", 1)
+        client.subscribe("res/settings", 2)
+        client.subscribe("res/messages", 2)
 
-        client.publish("req/settings", MqttMessage(clientId.toByteArray(),1, false, MqttProperties()))
-        client.publish("req/messages", MqttMessage(clientId.toByteArray(), 1, false, MqttProperties()))
+        client.publish("req/settings", MqttMessage(clientId.toByteArray(),2, false, MqttProperties()))
+        client.publish("req/messages", MqttMessage(clientId.toByteArray(), 2, false, MqttProperties()))
 
         Log.d(TAG, "Everything is setup. Waiting for messages..")
 
-        client.subscribe("messages/add", 1)
-        client.subscribe("messages/remove", 1)
+        client.subscribe("messages/add", 2)
+        client.subscribe("messages/remove", 2)
 
 
         println("Granted QoS: ${token.grantedQos.toList().toString()}")
@@ -165,20 +160,24 @@ class KotlinMqtt(user: String, pass: String) {
 
 
     companion object {
-
-
         @OptIn(DelicateCoroutinesApi::class)
         suspend fun testConnection(context: Context, host: String, user: String, pass: String): Boolean {
             val instance = KotlinMqtt(user, pass)
+            val callbacks = MqttCallbackRuntime({_ -> Unit}, {_ -> Unit}, {_ -> true}, {_ -> true}, null, null, null)
             var success = false
             val connection = GlobalScope.launch(CoroutineExceptionHandler {_, exception -> Log.w("KotlinMqtt", exception) }) {
                 try {
                     instance.host = host
-                    instance.connect(context, {_ -> Unit}, {_ -> Unit}, {_ -> true}, {_ -> true})
+                    instance.connect(context, callbacks)
                     println("connected: ${instance.isOnline()}")
-                } catch (ex: Exception){
-                    ex.printStackTrace()
-                    return@launch
+                } catch (any: Exception){
+                    if (any.message == null){
+                        throw Exception("Unknown error occurred")
+                    } else if (any.message!!.contains("Not authorized")){
+                        throw AuthException("Unable to authenticate user [$user]")
+                    } else {
+                        throw TimeoutException("Unable to connect to the server. It may be offline?")
+                    }
                 }
                 if (instance.isOnline()){
                     instance.disconnect()

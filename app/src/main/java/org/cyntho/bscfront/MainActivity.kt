@@ -3,6 +3,7 @@ package org.cyntho.bscfront
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
@@ -19,75 +20,72 @@ import android.view.View
 import com.google.android.material.tabs.TabLayout
 import androidx.viewpager.widget.ViewPager
 import androidx.appcompat.app.AppCompatActivity
-import android.widget.Button
-import android.window.OnBackInvokedDispatcher
 import androidx.activity.OnBackPressedCallback
-import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.registerForActivityResult
 import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import androidx.core.os.BuildCompat
-import androidx.fragment.app.createViewModelLazy
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.preference.PreferenceManager
 import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import org.cyntho.bscfront.data.LocationWrapper
 import org.cyntho.bscfront.data.StatusMessage
 import org.cyntho.bscfront.ui.main.SectionsPagerAdapter
 import org.cyntho.bscfront.databinding.ActivityMainBinding
-import org.cyntho.bscfront.exceptions.AuthException
 import org.cyntho.bscfront.net.KotlinMqtt
+import org.cyntho.bscfront.net.MqttCallbackRuntime
 import org.cyntho.bscfront.ui.main.PlaceholderFragment
-import org.cyntho.bscfront.ui.main.SettingsFragment
+import org.eclipse.paho.mqttv5.client.IMqttToken
+import org.eclipse.paho.mqttv5.client.MqttDisconnectResponse
+import org.eclipse.paho.mqttv5.common.MqttException
 import java.security.MessageDigest
 import java.sql.Time
 import java.time.Instant
 import java.util.Base64
+import java.util.concurrent.TimeoutException
 import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
 
-    private val TAG: String = "BscFront/MainActivity2"
-    private val CHANNEL_ID: Int = 0
+    private val TAG: String = "BscFront/MainActivity"
+    private var menu: Menu? = null
 
+    private val data: MutableCollection<StatusMessage> = mutableListOf()
+    private val fragments: MutableMap<Int, PlaceholderFragment> = mutableMapOf()
+    private var lastNotification: Long = 0
+
+    private var reconnectMaxAttempts = 5
+    private var reconnectTimeout = 1000L
+    private var reconnectAttempts = 0
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var mqtt: KotlinMqtt
-
-    private var menu: Menu? = null
-    private val data: MutableCollection<StatusMessage> = mutableListOf()
-    private val fragments: MutableMap<Int, PlaceholderFragment> = mutableMapOf()
-
-    private var lastNotification: Long = 0
+    private lateinit var callbacks: MqttCallbackRuntime
 
     private lateinit var sectionsPagerAdapter: SectionsPagerAdapter
     private lateinit var locations: List<String>
 
-    private lateinit var _username: String
-    private lateinit var _password: String
+    private lateinit var username: String
+    private lateinit var password: String
 
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        _username = intent.getStringExtra(USERNAME) ?: "empty"
-        _password = intent.getStringExtra(PASSWORD) ?: "empty"
-        //_username = PreferenceManager.getDefaultSharedPreferences(this).getString("runtime_username", "")!!
-        //_password = PreferenceManager.getDefaultSharedPreferences(this).getString("runtime_password", "")!!
-        println("CREATED MainActivity with: username = $_username, password = $_password")
-
-        println("Called by: ${callingActivity}")
-
+        username = intent.getStringExtra(USERNAME) ?: "empty"
+        password = intent.getStringExtra(PASSWORD) ?: "empty"
         locations = mutableListOf()
 
         // Assign default settings
         PreferenceManager.setDefaultValues(this, R.xml.root_preferences, true)
 
+        // Build UI
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -110,16 +108,21 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
+        // Setup empty taps
         val tabs: TabLayout = binding.tabs
         tabs.setupWithViewPager(viewPager)
 
-        mqtt = KotlinMqtt(_username, _password)
+        // Initialize connection
+        mqtt = KotlinMqtt(username, password)
+        callbacks = MqttCallbackRuntime(::addMessage,
+                                            ::removeMessage,
+                                            ::onSettingsReceived,
+                                            ::onMessagesReceived,
+                                            ::onDisconnect,
+                                            ::onErrorOccurred,
+                                            mqtt.getClient())
         try {
-            mqtt.connect(context = applicationContext,
-                funAdd = ::addMessage,
-                funRemove = ::removeMessage,
-                funMessages = ::onMessagesReceived,
-                funSettings = ::onSettingsReceived)
+            mqtt.connect(context = applicationContext, callbacks)
         } catch (any: Exception){
             println(any.message)
         }
@@ -127,60 +130,16 @@ class MainActivity : AppCompatActivity() {
         // Since onBackPressed() is deprecated:
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                println("MainActivity.handleOnBackPressed()")
+                Log.d(TAG, "Skipping 'onBackPressed()' to avoid going back to Login")
             }
         })
-
-
-/*
-        val frmLogin = binding.frmLogin
-        val btnConnect: Button = binding.btnConnect*/
-        val parentLayout = findViewById<View>(android.R.id.content)
-/*
-        btnConnect.setOnClickListener {
-            //Snackbar.make(view, "Something happened!", Snackbar.LENGTH_LONG).setAction("Action", null).show()
-            //connect(view)
-
-            if (mqtt.isOnline()){
-                println("Mqtt Service running.. Attempting to stop it")
-                runBlocking {
-                    mqtt.disconnect()
-                }
-            } else {
-                println("Attempting to start listener")
-                if (binding.txtUsername.text.toString() == "" || binding.txtPassword.text.toString() == ""){
-                    Snackbar.make(parentLayout, "Username or Password are empty!", Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
-                } else {
-                    runBlocking {
-                        try {
-                            mqtt.connect(applicationContext,
-                                binding.txtUsername.text.toString(),
-                                binding.txtPassword.text.toString(),
-                                ::addMessage,
-                                ::removeMessage,
-                                ::onSettingsReceived,
-                                ::onMessagesReceived)
-                        } catch (auth: AuthException){
-                            println(auth.message)
-                            Snackbar.make(parentLayout, "Invalid Username or Password", Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
-                            return@runBlocking
-                        } catch (any: Exception){
-                            any.printStackTrace()
-                        }
-                    }.also {
-                        if (mqtt.isOnline()){
-                            frmLogin.visibility = View.GONE
-                            // Enable logout button
-                            menu?.getItem(3)?.setEnabled(true)
-                        }
-                    }
-                }
-            }
-        }*/
     }
 
+    /**
+     * Create the menu and load saved preferences for notifications to display the bell icon accordingly
+     */
     override fun onCreateOptionsMenu(menu: Menu?): Boolean {
-        //return super.onCreateOptionsMenu(menu)
+        // Create the menu in accordance with '/res/menu/menu_main.xml'
         menuInflater.inflate(R.menu.menu_main, menu)
         this.menu = menu
 
@@ -195,17 +154,21 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    /**
+     * Change the view to 'SettingsActivity' while keeping the mqtt connection
+     */
     private fun startSettings(){
         val i = Intent(this@MainActivity, SettingsActivity::class.java)
         val b = Bundle().apply {
-            putString(USERNAME, _username)
-            putString(PASSWORD, _password)
+            putString(USERNAME, username)
+            putString(PASSWORD, password)
             putStringArray("LOCATIONS", locations.toTypedArray())
         }
         i.putExtras(b)
+
+        // Since startActivityForResult is deprecated, this seems to be the way to go
         resultLauncher.launch(i)
     }
-
     private var resultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){
         if (it.resultCode == Activity.RESULT_OK){
             val data: Intent? = it.data
@@ -214,6 +177,12 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    /**
+     * Handle click on menu items
+     *
+     * Bell     -> Toggle notification status
+     * Logout   -> Terminate connection and return to login screen
+     */
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId){
             R.id.menu_bell -> {
@@ -222,32 +191,17 @@ class MainActivity : AppCompatActivity() {
             }
             R.id.menu_settings -> {
                 // Open settings
-
-/*
-                val intent = Intent(this@MainActivity, SettingsActivity::class.java)
-                //val intent = SettingsActivity.newIntent(applicationContext, _username, _password)
-                val bundle: Bundle = Bundle().apply {
-                    putString(USERNAME, _username)
-                    putString(PASSWORD, _password)
-                }
-                intent.putExtras(bundle)
-                //startActivity(intent)*/
-
                 startSettings()
-
-
-
-                //supportFragmentManager.beginTransaction().replace(android.R.id.content, SettingsFragment.newInstance(applicationContext, _username, _password)).commit()
-
             }
             R.id.menu_logout -> {
+                // Logout and return to Login screen
                 if (mqtt.isOnline()){
                     runBlocking {
                         mqtt.disconnect()
                     }.also {
-                        Snackbar.make(findViewById<View>(android.R.id.content), "You are now offline", Snackbar.LENGTH_LONG).setAction("CLOSE") {}.show()
-                    }.also {
-                        menu?.getItem(3)?.setEnabled(true)
+                        val i = Intent(applicationContext, LoginActivity::class.java)
+                        startActivity(i)
+                        finish()
                     }
                 }
             }
@@ -259,11 +213,21 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
+    /**
+     * Gets called when the application returns from being minimized
+     * but also whenever other activities (e.g. settings) are being closed.
+     *
+     * In case notification status changed, update icon accordingly
+     */
     override fun onResume() {
         super.onResume()
         updateNotificationIcon()
     }
 
+
+    /**
+     * Whenever this activity is destroyed, terminate the connection
+     */
     override fun onDestroy() {
         if (mqtt.isOnline()){
             runBlocking {
@@ -275,6 +239,9 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    /**
+     * Update the notification icon (bell) based on the saved preferences
+     */
     private fun updateNotificationIcon(){
         val settings = PreferenceManager.getDefaultSharedPreferences(this)
         if (settings.getBoolean("switch_preference_notifications_global", true)){
@@ -284,6 +251,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+
+    /**
+     * Toggle the notifications as name implies (on --> off, off -> on)
+     */
     private fun toggleNotifications(){
 
         val settings = PreferenceManager.getDefaultSharedPreferences(this)
@@ -308,6 +279,14 @@ class MainActivity : AppCompatActivity() {
         updateNotificationIcon()
     }
 
+
+    /**
+     * Callback for adding messages [org.cyntho.bscfront.net.MqttCallbackRuntime]
+     *
+     * Unwraps received json to @see[StatusMessage] and forwards it to the corresponding fragment
+     * [PlaceholderFragment.onAddMessage]
+     */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun addMessage(message: String) : Unit{
         try {
             val wrapper = Gson().fromJson(message.trimIndent(), StatusMessage::class.java)
@@ -331,6 +310,12 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Callback for removing messages [org.cyntho.bscfront.net.MqttCallbackRuntime]
+     *
+     * Unwraps received json to [StatusMessage] and forwards it to the corresponding fragment
+     * [PlaceholderFragment.onRemoveMessage]
+     */
     private fun removeMessage(message: String) : Unit {
         try {
             val wrapper = Gson().fromJson(message.trimIndent(), StatusMessage::class.java)
@@ -348,6 +333,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Callback for receiving settings [org.cyntho.bscfront.net.MqttCallbackRuntime]
+     *
+     * Unwraps received json to [List] of [LocationWrapper] builds the [TabLayout] accordingly
+     *
+     * Locations received for the first time get hashed ([MainActivity.hash]) as 'username@location'
+     * and saved to default preferences to be able to set notifications per location
+     */
     private fun onSettingsReceived(settings: String): Boolean {
         try {
             val wrapper: List<LocationWrapper> = Gson().fromJson(settings, Array<LocationWrapper>::class.java).toList()
@@ -358,16 +351,18 @@ class MainActivity : AppCompatActivity() {
                 val pager: ViewPager = binding.viewPager2
                 val tabs: TabLayout = binding.tabs
 
+                // Prepare
                 spAdapter.setActivity(this)
                 val names = mutableListOf<String>()
                 val manager = PreferenceManager.getDefaultSharedPreferences(applicationContext)
                 val editor = manager.edit()
 
+                // Iterate over received locations and add them
                 for (page in wrapper){
                     names.add(page.id!!, page.name!!)
 
                     // Generate hash of 'username@location' for settings
-                    val h = hash("$_username@" + page.name!!)
+                    val h = hash("$username@" + page.name!!)
                     if (!manager.contains(h)){
                         editor.putBoolean(h, true)
                     }
@@ -394,21 +389,27 @@ class MainActivity : AppCompatActivity() {
         return false
     }
 
+
+    /**
+     * Callback for receiving settings [org.cyntho.bscfront.net.MqttCallbackRuntime]
+     *
+     * Unwraps received json to [List] of [StatusMessage] and adds them to the corresponding fragment.
+     * This is used for when the application starts and there may be 'old' messages that where not received
+     * during downtime.
+     */
     private fun onMessagesReceived(messages: String) : Boolean {
 
         try {
             val entry: StatusMessage = Gson().fromJson(messages, StatusMessage::class.java)
 
-            val f = fragments[entry.location]
+            val f: PlaceholderFragment? = fragments[entry.location] as PlaceholderFragment?
             if (f == null){
                 Log.e(TAG, "Unable to resolve fragment by location id ${entry.location}")
                 return false
             }
-            println("Added message with id ${entry.id} after the fact")
-
             f.onAddMessage(entry)
-
             return true
+
         } catch (any:Exception){
             Log.e(TAG, "Error parsing message list: $messages")
             any.printStackTrace()
@@ -417,21 +418,131 @@ class MainActivity : AppCompatActivity() {
         return false
     }
 
+    /**
+     * Callback for disconnects in [org.cyntho.bscfront.net.MqttCallbackRuntime]
+     *
+     * Attempt to reconnect [reconnectMaxAttempts] times with a timeout of [reconnectTimeout]
+     * The current [reconnectAttempts] are being reset to 0 on success. If the attempt to reconnect
+     * fails to often, the user is being forwarded back to the login screen.
+     */
+    @OptIn(DelicateCoroutinesApi::class)
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private fun onDisconnect(response: MqttDisconnectResponse?) {
 
+        Log.w(TAG, "::onDisconnect received ${response.toString()}")
+
+        // Check if the maximum number of attempts is reached
+        if (reconnectAttempts++ == reconnectMaxAttempts){
+
+            Log.d(TAG, "reconnectAttempts = $reconnectAttempts")
+
+            // Notify user that the connection has been lost
+            // This happens regardless of notification settings, since it is important no notice it.
+            val builder = NotificationCompat.Builder(this, "BSC_FRONT_NOTIFICATIONS")
+                .setLights(Color.RED, 3000, 3000)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setSmallIcon(R.drawable.ic_action_bell_thick_on)
+                .setContentTitle(getString(R.string.msg_err_connection_failed))
+                .setContentText(getString(R.string.msg_err_connection_lost_long))
+                .setOnlyAlertOnce(true)
+                .setVibrate(longArrayOf(1000, 1000, 1000, 1000, 1000))
+                .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM))
+
+            // Still have to check permissions though
+            requestNotification(builder)
+
+            // Forward to Login screen and finish this activity
+            startActivity(Intent(applicationContext, LoginActivity::class.java))
+            finish()
+            return
+        } else {
+            GlobalScope.launch { reconnect() }
+        }
+    }
+
+
+    @OptIn(DelicateCoroutinesApi::class)
+    private suspend fun reconnect(){
+        // Attempt to reconnect
+        GlobalScope.launch(CoroutineExceptionHandler {_, exception -> Log.w(TAG, exception) }) {
+            try {
+                mqtt.disconnect()
+                Log.d(TAG, "Attempting to reconnect.. ")
+                mqtt.connect(applicationContext, callbacks)
+            } catch (timeout: TimeoutException){
+                Log.d(TAG, "Caught error: ${timeout.message}")
+                return@launch
+            } catch (any: Exception){
+                // [any] includes AuthException here, although it SHOULD not occur
+                println("Received unknown exception:")
+                any.printStackTrace()
+            }
+        }
+
+        // Connection attempt was successful
+        if (mqtt.isOnline()){
+            Log.d(TAG, "Reconnect successful after $reconnectAttempts attempts")
+            reconnectAttempts = 0
+        } else {
+            reconnectTimeout = ((reconnectTimeout * 1.2).toLong())
+            println("Reconnect failed. Waiting [$reconnectAttempts / $reconnectMaxAttempts]${reconnectTimeout / 1000} seconds")
+            runBlocking {
+                Thread.sleep(reconnectTimeout)
+                reconnect()
+            }
+        }
+    }
+
+    private fun onErrorOccurred(exception: MqttException?){
+        println("onErrorOccurred: ${exception?.message}")
+    }
+
+
+    /**
+     * Used by [PlaceholderFragment] to add itself to local list of [fragments]
+     */
     fun addFragment(fragment: PlaceholderFragment, id: Int){
         fragments[id] = fragment
     }
 
+
+    /**
+     * Used by [PlaceholderFragment] to remove itself from local list of [fragments]
+     */
     fun removeFragment(id: Int){
         fragments.remove(id)
     }
 
+    /**
+     * Notifies the user with a push notification of an incoming message
+     * it may be deactivated in [SettingsActivity] or restricted
+     */
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     @SuppressLint("ServiceCast")
     private fun notifyUser(message: StatusMessage){
 
+        // cache
+        val preferences = PreferenceManager.getDefaultSharedPreferences(this)
+
         // Only notify user if app is in background
         if (ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)){
+            Log.d(TAG, "MainActivity::notifyUser --> not in background")
+            return
+        }
+
+        // Check if global notifications are turned off
+        if (!preferences.getBoolean("switch_preference_notifications_global", false)){
+            Log.d(TAG, "MainActivity::notifyUser --> globally deactivated")
+            return
+        }
+
+        // Check if notifications for this specific location are turned off
+        assert(locations.isNotEmpty())
+
+        val locationName = locations[message.location ?: 0]
+        val locationHash = hash("$username@$locationName")
+        if (!preferences.getBoolean(locationHash, false)){
+            Log.d(TAG, "MainActivity::notifyUser --> locally deactivated for $username@$locationName = $locationHash")
             return
         }
 
@@ -445,17 +556,32 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+
         val builder = NotificationCompat.Builder(this, "BSC_FRONT_NOTIFICATIONS")
-            .setVibrate(longArrayOf(1000, 1000, 1000))
             .setLights(Color.RED, 3000, 3000)
-            .setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setSmallIcon(R.drawable.ic_action_bell_thick_on)
-            .setContentTitle(message.status.toString())
+            .setContentTitle("${message.sps}${message.group}${message.device}${message.part}")
             .setContentText(message.message)
             .setOnlyAlertOnce(true)
 
+
+        // Should it vibrate?
+        if (preferences.getBoolean("switch_preference_notifications_vibrate", false)){
+            builder.setVibrate(longArrayOf(1000, 1000, 1000))
+        }
+
+        // Should it include a sound?
+        if (preferences.getBoolean("switch_preference_notifications_sound", false)){
+            builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+        }
+
         // Check for permissions
+        requestNotification(builder)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private fun requestNotification(builder: NotificationCompat.Builder){
         with (NotificationManagerCompat.from(this)){
             if (ActivityCompat.checkSelfPermission(
                     applicationContext,
