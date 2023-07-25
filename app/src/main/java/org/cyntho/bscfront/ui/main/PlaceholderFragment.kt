@@ -38,7 +38,7 @@ class PlaceholderFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        pageViewModel = ViewModelProvider(this).get(PageViewModel::class.java).apply {
+        pageViewModel = ViewModelProvider(this)[PageViewModel::class.java].apply {
             setIndex(arguments?.getInt(ARG_SECTION_NUMBER) ?: 1)
         }
 
@@ -53,7 +53,7 @@ class PlaceholderFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
 
-        pageViewModel = ViewModelProvider(this).get(PageViewModel::class.java).apply {
+        pageViewModel = ViewModelProvider(this)[PageViewModel::class.java].apply {
             setIndex(arguments?.getInt(ARG_SECTION_NUMBER) ?: 1)
         }
 
@@ -87,11 +87,11 @@ class PlaceholderFragment : Fragment() {
                 txtTime.text = message.time.toString()
 
                 try {
-                    val ttime = DateTimeFormatter.
+                    val tempTime = DateTimeFormatter.
                             ofPattern("HH:mm:ss").
                             format(Instant.ofEpochSecond(message.time).
                             atZone(ZoneId.of("Europe/Berlin")))
-                    txtTime.text = ttime.toString()
+                    txtTime.text = tempTime.toString()
 
                     //println(DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneOffset.UTC).format(Instant.now()))
 

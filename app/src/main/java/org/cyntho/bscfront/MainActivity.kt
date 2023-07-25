@@ -169,7 +169,7 @@ class MainActivity : AppCompatActivity() {
      * Handle click on menu items
      *
      * Bell     -> Toggle notification status
-     * Logout   -> Terminate connection and return to login screen
+     * Logout   -> Terminate connection and return to log in screen
      */
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId){
@@ -182,7 +182,7 @@ class MainActivity : AppCompatActivity() {
                 startSettings()
             }
             R.id.menu_logout -> {
-                // Logout and return to Login screen
+                // Logout and return to Log in screen
                 if (mqtt.isOnline()){
                     runBlocking {
                         mqtt.disconnect()
@@ -365,7 +365,7 @@ class MainActivity : AppCompatActivity() {
 
                 tabs.setupWithViewPager(pager, true)
 
-                Log.i(TAG, "Setup TabLayout for ${wrapper.size} Locations: ${names.toString()}")
+                Log.i(TAG, "Setup TabLayout for ${wrapper.size} Locations: $names")
             }.also {
                 return true
             }
@@ -439,7 +439,7 @@ class MainActivity : AppCompatActivity() {
             // Still have to check permissions though
             requestNotification(builder)
 
-            // Forward to Login screen and finish this activity
+            // Forward to Log in screen and finish this activity
             startActivity(Intent(applicationContext, LoginActivity::class.java))
             finish()
             return
