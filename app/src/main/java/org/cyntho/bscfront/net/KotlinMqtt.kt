@@ -14,16 +14,12 @@ import java.io.File
 import java.io.IOException
 import java.util.concurrent.TimeoutException
 
-class KotlinMqtt(user: String, pass: String) {
+class KotlinMqtt(private val username: String, private val password: String) {
 
     private var host: String? = null
     private var clientId: String = "uninitialized_client"
 
-    private val username: String = user
     private val sslPathCA: String = "certs/ca.pem"
-
-    private val password: String = pass
-
     private var client: MqttAsyncClient? = null
 
     private var running: Boolean = false
